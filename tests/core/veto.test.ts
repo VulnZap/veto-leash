@@ -672,4 +672,268 @@ rules:
       expect(result.validationResult.reason).toContain('API unavailable');
     });
   });
+
+  describe('kernel mode', () => {
+    it('should use kernel for validation when mode is kernel', async () => {
+      writeFileSync(
+        join(VETO_DIR, 'veto.config.yaml'),
+        `
+version: "1.0"
+mode: "strict"
+validation:
+  mode: "kernel"
+kernel:
+  baseUrl: "http://localhost:11434/v1"
+  model: "veto-warden:latest"
+  temperature: 0.1
+logging:
+  level: "silent"
+rules:
+  directory: "./rules"
+`,
+        'utf-8'
+      );
+
+      writeFileSync(
+        join(RULES_DIR, 'rule.yaml'),
+        `
+rules:
+  - id: block-etc
+    name: Block etc
+    enabled: true
+    severity: critical
+    action: block
+    tools:
+      - read_file
+    conditions:
+      - field: arguments.path
+        operator: starts_with
+        value: /etc
+`,
+        'utf-8'
+      );
+
+      // Mock kernel client response
+      const mockKernelResponse = {
+        pass_weight: 0.02,
+        block_weight: 0.98,
+        decision: 'block',
+        reasoning: 'Access to /etc blocked',
+        matched_rules: ['block-etc'],
+      };
+
+      const mockKernelClient = {
+        evaluate: vi.fn().mockResolvedValue(mockKernelResponse),
+        healthCheck: vi.fn().mockResolvedValue(true),
+      };
+
+      const veto = await Veto.init({
+        configDir: VETO_DIR,
+        kernelClient: mockKernelClient as never,
+      });
+
+      const result = await veto.validateToolCall({
+        id: 'call_kernel',
+        name: 'read_file',
+        arguments: { path: '/etc/passwd' },
+      });
+
+      expect(result.allowed).toBe(false);
+      expect(result.validationResult.reason).toBe('Access to /etc blocked');
+      expect(mockKernelClient.evaluate).toHaveBeenCalled();
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should allow calls when kernel returns pass', async () => {
+      writeFileSync(
+        join(VETO_DIR, 'veto.config.yaml'),
+        `
+version: "1.0"
+mode: "strict"
+validation:
+  mode: "kernel"
+kernel:
+  baseUrl: "http://localhost:11434/v1"
+  model: "veto-warden:latest"
+logging:
+  level: "silent"
+rules:
+  directory: "./rules"
+`,
+        'utf-8'
+      );
+
+      writeFileSync(
+        join(RULES_DIR, 'rule.yaml'),
+        `
+rules:
+  - id: block-etc
+    name: Block etc
+    enabled: true
+    severity: critical
+    action: block
+    tools:
+      - read_file
+`,
+        'utf-8'
+      );
+
+      const mockKernelResponse = {
+        pass_weight: 0.95,
+        block_weight: 0.05,
+        decision: 'pass',
+        reasoning: 'Safe file access',
+      };
+
+      const mockKernelClient = {
+        evaluate: vi.fn().mockResolvedValue(mockKernelResponse),
+        healthCheck: vi.fn().mockResolvedValue(true),
+      };
+
+      const veto = await Veto.init({
+        configDir: VETO_DIR,
+        kernelClient: mockKernelClient as never,
+      });
+
+      const result = await veto.validateToolCall({
+        id: 'call_safe',
+        name: 'read_file',
+        arguments: { path: '/home/user/file.txt' },
+      });
+
+      expect(result.allowed).toBe(true);
+    });
+
+    it('should block when kernel fails in strict mode', async () => {
+      writeFileSync(
+        join(VETO_DIR, 'veto.config.yaml'),
+        `
+version: "1.0"
+mode: "strict"
+validation:
+  mode: "kernel"
+kernel:
+  baseUrl: "http://localhost:11434/v1"
+  model: "veto-warden:latest"
+logging:
+  level: "silent"
+rules:
+  directory: "./rules"
+`,
+        'utf-8'
+      );
+
+      writeFileSync(
+        join(RULES_DIR, 'rule.yaml'),
+        `
+rules:
+  - id: test
+    name: Test
+    enabled: true
+    severity: high
+    action: block
+`,
+        'utf-8'
+      );
+
+      const mockKernelClient = {
+        evaluate: vi.fn().mockRejectedValue(new Error('Kernel unavailable')),
+        healthCheck: vi.fn().mockResolvedValue(false),
+      };
+
+      const veto = await Veto.init({
+        configDir: VETO_DIR,
+        kernelClient: mockKernelClient as never,
+      });
+
+      const result = await veto.validateToolCall({
+        id: 'call_fail',
+        name: 'read_file',
+        arguments: { path: '/test.txt' },
+      });
+
+      expect(result.allowed).toBe(false);
+      expect(result.validationResult.reason).toContain('Kernel');
+    });
+
+    it('should allow when kernel fails in log mode', async () => {
+      writeFileSync(
+        join(VETO_DIR, 'veto.config.yaml'),
+        `
+version: "1.0"
+mode: "log"
+validation:
+  mode: "kernel"
+kernel:
+  baseUrl: "http://localhost:11434/v1"
+  model: "veto-warden:latest"
+logging:
+  level: "silent"
+rules:
+  directory: "./rules"
+`,
+        'utf-8'
+      );
+
+      writeFileSync(
+        join(RULES_DIR, 'rule.yaml'),
+        `
+rules:
+  - id: test
+    name: Test
+    enabled: true
+    severity: high
+    action: block
+`,
+        'utf-8'
+      );
+
+      const mockKernelClient = {
+        evaluate: vi.fn().mockRejectedValue(new Error('Kernel unavailable')),
+        healthCheck: vi.fn().mockResolvedValue(false),
+      };
+
+      const veto = await Veto.init({
+        configDir: VETO_DIR,
+        kernelClient: mockKernelClient as never,
+      });
+
+      const result = await veto.validateToolCall({
+        id: 'call_log',
+        name: 'read_file',
+        arguments: { path: '/test.txt' },
+      });
+
+      expect(result.allowed).toBe(true);
+      expect(result.validationResult.reason).toContain('Kernel');
+    });
+
+    it('should return validation mode from getter', async () => {
+      writeFileSync(
+        join(VETO_DIR, 'veto.config.yaml'),
+        `
+version: "1.0"
+mode: "strict"
+validation:
+  mode: "kernel"
+kernel:
+  baseUrl: "http://localhost:11434/v1"
+  model: "veto-warden:latest"
+logging:
+  level: "silent"
+`,
+        'utf-8'
+      );
+
+      const veto = await Veto.init({ configDir: VETO_DIR });
+
+      expect(veto.getValidationMode()).toBe('kernel');
+    });
+
+    it('should default to api mode when validation.mode not specified', async () => {
+      const veto = await Veto.init({ configDir: VETO_DIR });
+
+      expect(veto.getValidationMode()).toBe('api');
+    });
+  });
 });

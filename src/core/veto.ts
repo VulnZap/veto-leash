@@ -34,6 +34,8 @@ import type {
   ToolCallHistorySummary,
   ValidationAPIResponse,
 } from '../rules/types.js';
+import type { KernelConfig, KernelToolCall } from '../kernel/types.js';
+import { KernelClient } from '../kernel/client.js';
 
 /**
  * Veto operating mode.
@@ -41,6 +43,13 @@ import type {
  * - "log": Only log validation failures, allow tool calls to proceed
  */
 export type VetoMode = 'strict' | 'log';
+
+/**
+ * Validation mode - how tool calls are validated.
+ * - "api": Use external HTTP API for validation
+ * - "kernel": Use local kernel model via Ollama
+ */
+export type ValidationMode = 'api' | 'kernel';
 
 /**
  * Wrapped handler function type.
@@ -63,12 +72,22 @@ export interface WrappedTools {
 interface VetoConfigFile {
   version?: string;
   mode?: VetoMode;
+  validation?: {
+    mode?: ValidationMode;
+  };
   api?: {
     baseUrl?: string;
     endpoint?: string;
     timeout?: number;
     retries?: number;
     retryDelay?: number;
+  };
+  kernel?: {
+    baseUrl?: string;
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    timeout?: number;
   };
   logging?: {
     level?: LogLevel;
@@ -127,6 +146,11 @@ export interface VetoOptions {
    * Additional validators to run alongside rule-based validation.
    */
   validators?: (Validator | NamedValidator)[];
+
+  /**
+   * Injected kernel client for testing or custom configurations.
+   */
+  kernelClient?: KernelClient;
 }
 
 /**
@@ -159,6 +183,7 @@ export class Veto {
   // Configuration
   private readonly configDir: string;
   private readonly mode: VetoMode;
+  private readonly validationMode: ValidationMode;
   private readonly apiBaseUrl: string;
   private readonly apiEndpoint: string;
   private readonly apiTimeout: number;
@@ -166,6 +191,10 @@ export class Veto {
   private readonly apiRetryDelay: number;
   private readonly sessionId?: string;
   private readonly agentId?: string;
+
+  // Kernel client (lazy initialized or injected)
+  private kernelClient: KernelClient | null = null;
+  private readonly kernelConfig: KernelConfig | null;
 
   // Loaded rules
   private readonly rules: LoadedRulesState;
@@ -183,12 +212,33 @@ export class Veto {
     // Resolve mode (strict blocks, log only logs)
     this.mode = options.mode ?? config.mode ?? 'strict';
 
+    // Resolve validation mode (api or kernel)
+    this.validationMode = config.validation?.mode ?? 'api';
+
     // Resolve API configuration from config file
     this.apiBaseUrl = (config.api?.baseUrl ?? 'http://localhost:8080').replace(/\/$/, '');
     this.apiEndpoint = config.api?.endpoint ?? '/tool/call/check';
     this.apiTimeout = config.api?.timeout ?? 10000;
     this.apiRetries = config.api?.retries ?? 2;
     this.apiRetryDelay = config.api?.retryDelay ?? 1000;
+
+    // Resolve kernel configuration
+    if (this.validationMode === 'kernel' && config.kernel?.model) {
+      this.kernelConfig = {
+        baseUrl: config.kernel.baseUrl ?? 'http://localhost:11434/v1',
+        model: config.kernel.model,
+        temperature: config.kernel.temperature,
+        maxTokens: config.kernel.maxTokens,
+        timeout: config.kernel.timeout,
+      };
+    } else {
+      this.kernelConfig = null;
+    }
+
+    // Use injected kernel client if provided
+    if (options.kernelClient) {
+      this.kernelClient = options.kernelClient;
+    }
 
     // Resolve tracking options
     this.sessionId = options.sessionId ?? process.env.VETO_SESSION_ID;
@@ -197,7 +247,9 @@ export class Veto {
     this.logger.info('Veto configuration loaded', {
       configDir: this.configDir,
       mode: this.mode,
-      apiUrl: `${this.apiBaseUrl}${this.apiEndpoint}`,
+      validationMode: this.validationMode,
+      apiUrl: this.validationMode === 'api' ? `${this.apiBaseUrl}${this.apiEndpoint}` : undefined,
+      kernelModel: this.kernelConfig?.model,
       rulesLoaded: rules.allRules.length,
     });
 
@@ -208,12 +260,16 @@ export class Veto {
       defaultDecision,
     });
 
-    // Add the API-based rule validator
+    // Add the rule validator based on validation mode
     this.validationEngine.addValidator({
       name: 'veto-rule-validator',
-      description: 'Validates tool calls via external API',
+      description: this.validationMode === 'kernel'
+        ? 'Validates tool calls via local kernel model'
+        : 'Validates tool calls via external API',
       priority: 50,
-      validate: (ctx) => this.validateWithAPI(ctx),
+      validate: (ctx) => this.validationMode === 'kernel'
+        ? this.validateWithKernel(ctx)
+        : this.validateWithAPI(ctx),
     });
 
     // Add any additional validators
@@ -572,6 +628,131 @@ export class Veto {
   }
 
   /**
+   * Get or create the kernel client.
+   */
+  private getKernelClient(): KernelClient {
+    if (this.kernelClient) {
+      return this.kernelClient;
+    }
+
+    if (!this.kernelConfig) {
+      throw new Error('Kernel configuration not available');
+    }
+
+    this.kernelClient = new KernelClient({
+      config: this.kernelConfig,
+      logger: this.logger,
+    });
+
+    return this.kernelClient;
+  }
+
+  /**
+   * Validate a tool call with the local kernel model.
+   */
+  private async validateWithKernel(context: ValidationContext): Promise<ValidationResult> {
+    const rules = this.getRulesForTool(context.toolName);
+
+    // If no rules, allow by default
+    if (rules.length === 0) {
+      this.logger.debug('No rules for tool, allowing', { tool: context.toolName });
+      return { decision: 'allow' };
+    }
+
+    const toolCall: KernelToolCall = {
+      tool: context.toolName,
+      arguments: context.arguments,
+    };
+
+    try {
+      const kernelClient = this.getKernelClient();
+      const response = await kernelClient.evaluate(toolCall, rules);
+
+      return this.handleKernelResponse(response, context);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      return this.handleKernelFailure(reason);
+    }
+  }
+
+  /**
+   * Handle successful kernel response.
+   */
+  private handleKernelResponse(
+    response: import('../kernel/types.js').KernelResponse,
+    context: ValidationContext
+  ): ValidationResult {
+    const metadata = {
+      pass_weight: response.pass_weight,
+      block_weight: response.block_weight,
+      matched_rules: response.matched_rules,
+    };
+
+    if (response.decision === 'pass') {
+      this.logger.debug('Kernel allowed tool call', {
+        tool: context.toolName,
+        passWeight: response.pass_weight,
+      });
+
+      return {
+        decision: 'allow',
+        reason: response.reasoning,
+        metadata,
+      };
+    } else {
+      // Kernel returned block decision
+      if (this.mode === 'log') {
+        // Log mode: log the block but allow the call
+        this.logger.warn('Tool call would be blocked (log mode)', {
+          tool: context.toolName,
+          blockWeight: response.block_weight,
+          reason: response.reasoning,
+        });
+
+        return {
+          decision: 'allow',
+          reason: `[LOG MODE] Would block: ${response.reasoning}`,
+          metadata: { ...metadata, blocked_in_strict_mode: true },
+        };
+      } else {
+        // Strict mode: actually block the call
+        this.logger.warn('Tool call blocked by kernel', {
+          tool: context.toolName,
+          blockWeight: response.block_weight,
+          reason: response.reasoning,
+        });
+
+        return {
+          decision: 'deny',
+          reason: response.reasoning,
+          metadata,
+        };
+      }
+    }
+  }
+
+  /**
+   * Handle kernel failure. In log mode, always allow. In strict mode, block.
+   */
+  private handleKernelFailure(reason: string): ValidationResult {
+    if (this.mode === 'log') {
+      this.logger.warn('Kernel unavailable (log mode, allowing)', { reason });
+      return {
+        decision: 'allow',
+        reason: `Kernel unavailable: ${reason}`,
+        metadata: { kernel_error: true },
+      };
+    } else {
+      this.logger.error('Kernel unavailable (strict mode, blocking)', { reason });
+      return {
+        decision: 'deny',
+        reason: `Kernel unavailable: ${reason}`,
+        metadata: { kernel_error: true },
+      };
+    }
+  }
+
+  /**
    * Build history summary for API.
    */
   private buildHistorySummary(
@@ -722,6 +903,13 @@ export class Veto {
    */
   getMode(): VetoMode {
     return this.mode;
+  }
+
+  /**
+   * Get current validation mode (api or kernel).
+   */
+  getValidationMode(): ValidationMode {
+    return this.validationMode;
   }
 
   /**
