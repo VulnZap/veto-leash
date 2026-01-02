@@ -1923,7 +1923,7 @@ ${COLORS.bold}ENVIRONMENT${COLORS.reset}
   GEMINI_API_KEY     Required. Get free at https://aistudio.google.com/apikey
 
 ${COLORS.bold}MORE INFO${COLORS.reset}
-  https://github.com/plaw-inc/veto-leash
+  https://github.com/VulnZap/veto-leash
 `);
 }
 
@@ -1999,10 +1999,10 @@ dist/
   "engines": { "node": ">=20" },
   "keywords": ["ai", "agents", "permissions", "security", "claude", "opencode"],
   "author": "Plaw, Inc.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/plaw-inc/veto-leash"
+    "url": "https://github.com/VulnZap/veto-leash"
   }
 }
 

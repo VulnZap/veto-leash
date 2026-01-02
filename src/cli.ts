@@ -491,7 +491,7 @@ ${COLORS.bold}ENVIRONMENT${COLORS.reset}
                      Free: https://aistudio.google.com/apikey
 
 ${COLORS.bold}MORE INFO${COLORS.reset}
-  https://github.com/plaw-inc/veto-leash
+  https://github.com/VulnZap/veto-leash
 `);
 }
 
