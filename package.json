@@ -1,0 +1,45 @@
+{
+  "name": "veto-leash",
+  "version": "0.1.0",
+  "description": "Semantic permissions for AI coding agents — sudo for AI agents",
+  "bin": {
+    "leash": "./dist/cli.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc && chmod +x dist/cli.js",
+    "dev": "tsx src/cli.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "micromatch": "^4.0.8",
+    "glob": "^11.0.0",
+    "chokidar": "^4.0.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "tsx": "^4.19.0",
+    "@types/node": "^22.0.0",
+    "@types/micromatch": "^4.0.9"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "permissions",
+    "security",
+    "claude",
+    "opencode",
+    "veto",
+    "leash"
+  ],
+  "author": "Plaw, Inc.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/plaw-inc/veto-leash"
+  }
+}
