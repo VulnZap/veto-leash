@@ -10,14 +10,19 @@ import type {
 import { isProtected } from '../matcher.js';
 import { COLORS, SYMBOLS } from '../ui/colors.js';
 import { logBlocked } from '../audit/index.js';
+import { registerSession, unregisterSession } from './sessions.js';
 
 export class VetoDaemon {
   private server: net.Server | null = null;
   private policy: Policy;
   private state: SessionState;
+  private restriction: string;
+  private agent: string;
 
-  constructor(policy: Policy, agent: string) {
+  constructor(policy: Policy, agent: string, restriction: string = '') {
     this.policy = policy;
+    this.restriction = restriction;
+    this.agent = agent;
     this.state = {
       pid: process.pid,
       agent,
@@ -59,6 +64,7 @@ export class VetoDaemon {
 
       this.server.listen(0, '127.0.0.1', () => {
         const addr = this.server!.address() as net.AddressInfo;
+        registerSession(addr.port, this.agent, 'wrapper', this.restriction, this.policy);
         resolve(addr.port);
       });
 
@@ -108,6 +114,9 @@ export class VetoDaemon {
   }
 
   stop(): void {
+    // Unregister session first
+    unregisterSession();
+
     // Print session summary
     const duration = Date.now() - this.state.startTime.getTime();
     const minutes = Math.floor(duration / 60000);

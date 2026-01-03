@@ -6,6 +6,7 @@ import type { Policy } from '../types.js';
 import { createSnapshot, cleanupSnapshot, generateSessionId, type Snapshot } from './snapshot.js';
 import { createWatcher, type WatcherStats } from './watcher.js';
 import { COLORS, SYMBOLS } from '../ui/colors.js';
+import { registerSession, unregisterSession } from '../wrapper/sessions.js';
 
 export interface WatchdogSession {
   sessionId: string;
@@ -22,7 +23,8 @@ export interface WatchdogSession {
  */
 export async function startWatchdog(
   rootDir: string,
-  policy: Policy
+  policy: Policy,
+  restriction: string = ''
 ): Promise<WatchdogSession> {
   const sessionId = generateSessionId();
   const startTime = new Date();
@@ -36,6 +38,9 @@ export async function startWatchdog(
     policy,
     snapshot,
   });
+
+  // Register session (port 0 for watchdog since it doesn't use TCP)
+  registerSession(0, 'watchdog', 'watchdog', restriction, policy);
 
   return {
     sessionId,
@@ -52,6 +57,9 @@ export async function startWatchdog(
  * Stop watchdog mode and print summary
  */
 export async function stopWatchdog(session: WatchdogSession): Promise<void> {
+  // Unregister session first
+  unregisterSession();
+
   const duration = Date.now() - session.startTime.getTime();
   const minutes = Math.floor(duration / 60000);
   const seconds = Math.floor((duration % 60000) / 1000);

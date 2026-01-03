@@ -23,9 +23,10 @@ import {
 } from './config/loader.js';
 import { printAuditLog, clearAuditLog } from './audit/index.js';
 import { login as cloudLogin, printCloudStatus } from './cloud/index.js';
+import { getActiveSessions } from './wrapper/sessions.js';
 import type { Policy } from './types.js';
 
-const VERSION = '0.1.0';
+const VERSION = '0.1.2';
 
 async function main() {
   const args = process.argv.slice(2);
@@ -149,7 +150,7 @@ async function runWrapper(agent: string, restriction: string) {
   console.log(`\n  Press Ctrl+C to exit\n`);
 
   // Start daemon
-  const daemon = new VetoDaemon(policy, agent);
+  const daemon = new VetoDaemon(policy, agent, restriction);
   const port = await daemon.start();
 
   // Create wrapper scripts
@@ -248,7 +249,7 @@ async function runWatchdog(restriction: string) {
 
   // Start watchdog
   const snapshotSpinner = createSpinner('Creating file snapshots...');
-  const session = await startWatchdog(process.cwd(), policy);
+  const session = await startWatchdog(process.cwd(), policy, restriction);
   snapshotSpinner.stop();
 
   // Print startup message
@@ -283,10 +284,35 @@ async function runWatchdog(restriction: string) {
   await new Promise(() => {});
 }
 
-function runStatus() {
+function runStatus(): void {
   console.log(`\n${COLORS.bold}veto-leash Status${COLORS.reset}`);
-  console.log('\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n');
-  console.log('No active sessions.\n');
+  console.log('\u2550'.repeat(50) + '\n');
+
+  const sessions = getActiveSessions();
+
+  if (sessions.length === 0) {
+    console.log(`${COLORS.dim}No active sessions.${COLORS.reset}\n`);
+    return;
+  }
+
+  console.log(`${COLORS.success}${sessions.length} active session(s)${COLORS.reset}\n`);
+
+  for (const session of sessions) {
+    const startTime = new Date(session.startTime);
+    const duration = Date.now() - startTime.getTime();
+    const minutes = Math.floor(duration / 60000);
+    const seconds = Math.floor((duration % 60000) / 1000);
+
+    console.log(`${COLORS.bold}[${session.mode.toUpperCase()}]${COLORS.reset} PID ${session.pid}`);
+    console.log(`  ${COLORS.dim}Agent:${COLORS.reset}       ${session.agent}`);
+    console.log(`  ${COLORS.dim}Restriction:${COLORS.reset} "${session.restriction}"`);
+    console.log(`  ${COLORS.dim}Action:${COLORS.reset}      ${session.policyAction}`);
+    console.log(`  ${COLORS.dim}Patterns:${COLORS.reset}    ${session.policyPatterns.join(', ')}`);
+    console.log(`  ${COLORS.dim}Directory:${COLORS.reset}   ${session.cwd}`);
+    console.log(`  ${COLORS.dim}Uptime:${COLORS.reset}      ${minutes}m ${seconds}s`);
+    console.log(`  ${COLORS.dim}Port:${COLORS.reset}        ${session.port}`);
+    console.log('');
+  }
 }
 
 async function runInstall(agent: string) {

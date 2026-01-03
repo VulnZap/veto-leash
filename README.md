@@ -1,6 +1,13 @@
-# veto-leash
-
-**sudo for AI agents**
+<p align="center">
+  <h1 align="center">veto-leash</h1>
+  <p align="center"><strong>sudo for AI agents</strong></p>
+  <p align="center">
+    <a href="https://www.npmjs.com/package/veto-leash"><img src="https://img.shields.io/npm/v/veto-leash?style=flat-square&color=black" alt="npm version"></a>
+    <a href="https://github.com/VulnZap/veto-leash/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/VulnZap/veto-leash/ci.yml?style=flat-square&color=black&label=tests" alt="CI"></a>
+    <a href="https://github.com/VulnZap/veto-leash/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/veto-leash?style=flat-square&color=black" alt="License"></a>
+    <a href="https://www.npmjs.com/package/veto-leash"><img src="https://img.shields.io/npm/dm/veto-leash?style=flat-square&color=black" alt="Downloads"></a>
+  </p>
+</p>
 
 Your AI agent has root access to your codebase. You have... vibes.
 
@@ -164,7 +171,7 @@ leash clear                       Clear compilation cache
 These work instantly without an API key:
 
 | Phrase | What It Protects |
-|--------|-----------------|
+|--------|------------------|
 | `test files` | `*.test.*`, `*.spec.*`, `__tests__/**` |
 | `.env` | `.env`, `.env.*`, excluding `.env.example` |
 | `migrations` | `**/migrations/**`, `prisma/migrations/**` |
@@ -249,12 +256,12 @@ The agent never knows veto-leash is there - it just sees commands failing with c
 
 ## License
 
-MIT
-
-## Credits
-
-Built by [Plaw, Inc.](https://plaw.io) for the [Veto](https://veto.dev) product line.
+Apache-2.0
 
 ---
 
-Ship faster. Sleep better.
+<p align="center">
+  Built by <a href="https://plaw.io">Plaw, Inc.</a> for the <a href="https://veto.dev">Veto</a> product line.
+  <br><br>
+  <strong>Ship faster. Sleep better.</strong>
+</p>
