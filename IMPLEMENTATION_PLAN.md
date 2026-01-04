@@ -90,9 +90,18 @@ Enforcement works
 | Phase 2: Regex Content Matching | ✅ COMPLETE | Basic content rules with strict mode                 |
 | Phase 2.1: AST Infrastructure   | ✅ COMPLETE | Tree-sitter parsing, zero false positives            |
 | Phase 2.2: AST Integration      | ✅ COMPLETE | Node.js validator with AST, LLM schema updated       |
-| **Phase 3: Frictionless UX**    | ✅ COMPLETE | Simple `.leash` parser, auto-init, agent detection   |
 
-**Test Suite**: 229 tests passing (41 AST-specific, 12 parser tests)
+- **Phase 3: Frictionless UX** (Completed - v1.0.0)
+  - Simple `.leash` format (plain text)
+  - Auto-detection of installed agents
+  - Background compilation (`leash watch`)
+  - AST Validation (Zero False Positives)
+
+- **Phase 4: Interactive Onboarding ("The TUI")** (Current)
+  - Interactive `leash init` wizard (inspired by shadcn)
+  - Robust conflict detection and resolution
+  - "Spectacular" TUI feedback
+  - Final polish for v1.1.0
 
 ---
 
@@ -853,27 +862,36 @@ Scanning project with AST validation...
   - `parseLeashFile()` - parses one-rule-per-line format
   - `isSimpleLeashFormat()` - detects simple vs YAML
   - `policiesToConfig()` - converts to internal format
-- Updated `src/config/loader.ts` to auto-detect format
-- Updated `src/config/schema.ts` with `generateSimpleLeash()` and `DEFAULT_SIMPLE_POLICIES`
-- Created `test/leash-parser.test.ts` with 12 new tests
+    -## Phase 4: Interactive Onboarding & Conflict Resolution
 
-**Task 3.2: Enhanced `leash init` (✅ DONE)**
+**Goal**: Deliver a premium, "shadcn-like" CLI experience that guides users through setup and safely manages configuration conflicts.
 
-- Added `detectInstalledAgents()` to `src/native/index.ts`
-  - Checks for `~/.claude/`, `~/.opencode/`, `~/.cursor/`, `~/.windsurf/`, `.aider.conf.yml`
-- Updated `runInit()` in `src/cli.ts` to:
-  - Auto-detect installed AI agents
-  - Auto-install hooks for all detected agents
-  - Create simple `.leash` file if not exists
-  - One-command setup experience
+### 4.1 Interactive `init` Wizard
 
-**Task 3.3: Background Compilation (✅ DONE)**
+- **Dependency**: Add `prompts` for TUI.
+- **Flow**:
+  1.  **Welcome**: "Welcome to veto-leash. Let's secure your AI agents."
+  2.  **Detection**: "We detected the following agents: [x] Claude Code, [ ] OpenCode..." (Allow manual selection)
+  3.  **Configuration**: ".leash file not found. Create one with default rules?"
+  4.  **Installation**: "Install native hooks for selected agents?"
+  5.  **Success**: "Setup complete. Policies enforced."
+
+### 4.2 Robust Conflict Management
+
+- **Claude Code**: Continue using "safe sync" (append to `hooks` and `permissions.deny`). Detect if `veto-leash` is already installed and offer to update/reinstall.
+- **OpenCode**: Ensure `opencode.json` updates are non-destructive (merge permissions, don't wipe existing ones).
+- **Cursor/Windsurf**: Check for existing `.cursor/hooks.json` or `.windsurf/hooks.json` and merge carefully.
+
+### 4.3 Polish & "Spectacular" Feedback
+
+- Reuse `ora` or simple logs with colors (already using `colors.ts`).
+- Ensure immediate feedback: "Policy active: no lodash" immediately after sync.
+- "Leash connected" status indicator.3: Background Compilation (✅ DONE)\*\*
 
 - Created `src/config/watcher.ts` with:
   - `startLeashWatcher()` - watches `.leash` with chokidar
   - `forceRecompile()` - manual recompile trigger
   - Outputs `.leash.compiled.json` cache
-- Compiles on save using existing `compileLeashConfig()`
 
 ### Files Changed
 

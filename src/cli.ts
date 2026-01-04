@@ -16,6 +16,8 @@ import {
   detectInstalledAgents,
 } from './native/index.js';
 import { startWatchdog, stopWatchdog } from './watchdog/index.js';
+import { runSync } from './commands/sync.js';
+
 import {
   findLeashConfig,
   loadLeashConfig,
@@ -24,6 +26,7 @@ import {
   hasLeashConfig,
 } from './config/loader.js';
 import { printAuditLog, clearAuditLog } from './audit/index.js';
+import { runInteractiveInit } from './commands/init-interactive.js';
 import { login as cloudLogin, printCloudStatus } from './cloud/index.js';
 import { getActiveSessions } from './wrapper/sessions.js';
 import type { Policy } from './types.js';
@@ -70,7 +73,7 @@ async function main() {
       await runUninstall(args[1]);
       break;
     case 'init':
-      await runInit();
+      await runInteractiveInit();
       break;
     case 'sync':
       await runSync(args[1]);
@@ -462,90 +465,9 @@ async function runUninstall(agent: string) {
   }
 }
 
-async function runInit() {
-  console.log(`\n${COLORS.bold}Detecting AI coding agents...${COLORS.reset}`);
-  
-  // Detect installed agents
-  const detected = detectInstalledAgents();
-  
-  if (detected.length === 0) {
-    console.log(`  ${COLORS.dim}No agents detected${COLORS.reset}`);
-    console.log(`\n${COLORS.dim}Tip: Install Claude Code, Cursor, OpenCode, or Windsurf first.${COLORS.reset}`);
-  } else {
-    for (const agent of detected) {
-      console.log(`  ${COLORS.success}${SYMBOLS.success} ${agent.name} found${COLORS.reset}`);
-    }
-  }
-  
-  // Create .leash file if not exists
-  if (!hasLeashConfig()) {
-    console.log(`\n${COLORS.bold}Creating .leash config...${COLORS.reset}`);
-    createLeashConfig();
-  } else {
-    console.log(`\n${COLORS.success}${SYMBOLS.success} .leash already exists${COLORS.reset}`);
-  }
-  
-  // Install hooks for detected agents with native support
-  const nativeAgents = detected.filter(a => a.hasNativeHooks);
-  if (nativeAgents.length > 0) {
-    console.log(`\n${COLORS.bold}Installing enforcement hooks...${COLORS.reset}`);
-    for (const agent of nativeAgents) {
-      try {
-        await installAgent(agent.id);
-      } catch {
-        console.log(`  ${COLORS.warning}${SYMBOLS.warning} Could not install ${agent.name} hooks${COLORS.reset}`);
-      }
-    }
-  }
-  
-  console.log(`\n${COLORS.success}${SYMBOLS.success} Done!${COLORS.reset} Policies enforced automatically.`);
-  console.log(`\nEdit ${COLORS.bold}.leash${COLORS.reset} to customize your policies.`);
-  console.log(`Run ${COLORS.dim}leash sync${COLORS.reset} to apply changes.\n`);
-}
 
-async function runSync(agent?: string) {
-  const configPath = findLeashConfig();
-  
-  if (!configPath) {
-    console.error(`${COLORS.error}${SYMBOLS.error} No .leash config found${COLORS.reset}`);
-    console.log(`Run: ${COLORS.dim}leash init${COLORS.reset}`);
-    process.exit(1);
-  }
 
-  const config = loadLeashConfig(configPath);
-  if (!config) {
-    process.exit(1);
-  }
 
-  console.log(`\n${COLORS.info}Loading ${configPath}...${COLORS.reset}`);
-
-  // Compile all policies
-  const compiled = await compileLeashConfig(config);
-
-  console.log(`${COLORS.success}${SYMBOLS.success} Compiled ${compiled.policies.length} policies${COLORS.reset}\n`);
-
-  // Save each policy
-  for (const { restriction, policy } of compiled.policies) {
-    const policyName = restriction
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 50);
-    
-    await addPolicyToAgents(policy, policyName);
-  }
-
-  // If agent specified, install for that agent
-  if (agent) {
-    console.log('');
-    await installAgent(agent);
-  } else {
-    console.log(`To install for an agent:`);
-    console.log(`  ${COLORS.dim}leash install cc${COLORS.reset}        Claude Code`);
-    console.log(`  ${COLORS.dim}leash install windsurf${COLORS.reset}  Windsurf`);
-    console.log(`  ${COLORS.dim}leash install oc${COLORS.reset}        OpenCode\n`);
-  }
-}
 
 async function runAudit(clear: boolean, tail: boolean) {
   if (clear) {
