@@ -18,11 +18,11 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "ci": "pnpm build && pnpm test && pnpm typecheck",
-    "release": "pnpm ci && npm publish --access public && git push && git push --tags",
+    "release": "pnpm run ci && npm publish --access public && git push && git push --tags",
     "release:patch": "npm version patch && pnpm release",
     "release:minor": "npm version minor && pnpm release",
     "release:major": "npm version major && pnpm release",
-    "prepublishOnly": "pnpm ci"
+    "prepublishOnly": "pnpm run ci"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",
