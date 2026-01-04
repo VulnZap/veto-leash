@@ -16,7 +16,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "prepublishOnly": "npm run build && npm run test"
+    "typecheck": "tsc --noEmit",
+    "ci": "pnpm build && pnpm test && pnpm typecheck",
+    "release": "pnpm ci && npm publish --access public && git push && git push --tags",
+    "release:patch": "npm version patch && pnpm release",
+    "release:minor": "npm version minor && pnpm release",
+    "release:major": "npm version major && pnpm release",
+    "prepublishOnly": "pnpm ci"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",
