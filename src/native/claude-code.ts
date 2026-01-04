@@ -152,20 +152,8 @@ export async function installClaudeCodeHook(): Promise<void> {
     console.log(`  ${COLORS.success}${SYMBOLS.success}${COLORS.reset} Added hook to settings`);
   }
 
-  // Check for conflicting broad allow rules that might bypass hooks
-  if (settings.permissions?.allow) {
-    const broadAllows = settings.permissions.allow.filter((rule: string) => 
-      rule === 'Write(*)' || rule === 'Edit(*)' || rule === 'Bash(*)' || rule === 'MultiEdit(*)'
-    );
-    
-    if (broadAllows.length > 0) {
-      // Remove conflicting allows
-      settings.permissions.allow = settings.permissions.allow.filter((rule: string) => 
-        !['Write(*)', 'Edit(*)', 'Bash(*)', 'MultiEdit(*)'].includes(rule)
-      );
-      console.log(`  ${COLORS.warning}${SYMBOLS.warning}${COLORS.reset} Removed broad allows that bypass hooks: ${broadAllows.join(', ')}`);
-    }
-  }
+  // Note: We don't modify the user's existing permissions.allow
+  // The PreToolUse hook runs regardless of allow rules and can still deny
 
   // Write settings back
   mkdirSync(CLAUDE_CONFIG_DIR, { recursive: true });
