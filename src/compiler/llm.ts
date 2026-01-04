@@ -153,7 +153,7 @@ Restriction: "${restriction}"`;
         contents: prompt,
         config: {
           temperature: 0,
-          maxOutputTokens: 512,
+          maxOutputTokens: 2048,
           responseMimeType: 'application/json',
           responseSchema: POLICY_SCHEMA,
         },
@@ -164,14 +164,19 @@ Restriction: "${restriction}"`;
         throw new Error('Empty response from Gemini');
       }
 
-      const parsed = JSON.parse(text) as Policy;
+      try {
+        const parsed = JSON.parse(text) as Policy;
 
-      // Override action with suggested action if not present
-      if (!parsed.action) {
-        parsed.action = suggestedAction;
+        // Override action with suggested action if not present
+        if (!parsed.action) {
+          parsed.action = suggestedAction;
+        }
+
+        return parsed;
+      } catch (parseError: any) {
+        // If parsing fails, it's likely truncated or hallucinated
+        throw new Error(`Failed to parse policy JSON: ${parseError.message}\nRaw response: ${text.slice(0, 100)}...`);
       }
-
-      return parsed;
 
     } catch (error: any) {
       if (attempt === MAX_RETRIES) throw error;
