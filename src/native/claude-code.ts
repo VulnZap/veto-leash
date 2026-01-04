@@ -24,6 +24,10 @@ interface ClaudeSettings {
       }>;
     }>;
   };
+  permissions?: {
+    allow?: string[];
+    deny?: string[];
+  };
   [key: string]: unknown;
 }
 
@@ -155,7 +159,8 @@ export async function installClaudeCodeHook(): Promise<void> {
 }
 
 /**
- * Add a policy to Claude Code's veto-leash policies
+ * Add a policy to Claude Code's veto-leash policies.
+ * Also syncs command block patterns to permissions.deny for reliable blocking.
  */
 export async function addClaudeCodePolicy(policy: Policy, name: string): Promise<void> {
   const policiesDir = join(CLAUDE_HOOKS_DIR, 'policies');
@@ -164,6 +169,47 @@ export async function addClaudeCodePolicy(policy: Policy, name: string): Promise
   const policyFile = join(policiesDir, `${name}.json`);
   writeFileSync(policyFile, JSON.stringify(policy, null, 2));
   console.log(`${COLORS.success}${SYMBOLS.success}${COLORS.reset} Policy saved: ${policyFile}`);
+  
+  // Also add command block patterns to Claude's permissions.deny
+  // This ensures blocking works even with broad allow rules like "Bash(npm:*)"
+  if (policy.commandRules?.length) {
+    await syncDenyRulesToSettings(policy.commandRules);
+  }
+}
+
+/**
+ * Sync command block patterns to Claude's permissions.deny.
+ * Converts patterns like "npm install lodash*" to "Bash(npm install lodash*)"
+ */
+async function syncDenyRulesToSettings(commandRules: Array<{ block: string[]; reason: string }>): Promise<void> {
+  if (!existsSync(CLAUDE_SETTINGS_FILE)) return;
+  
+  try {
+    const settings: ClaudeSettings = JSON.parse(readFileSync(CLAUDE_SETTINGS_FILE, 'utf-8'));
+    
+    // Ensure permissions structure exists
+    if (!settings.permissions) {
+      settings.permissions = {};
+    }
+    if (!settings.permissions.deny) {
+      settings.permissions.deny = [];
+    }
+    
+    // Convert command patterns to Claude's deny format
+    // e.g., "npm install lodash*" -> "Bash(npm install lodash*)"
+    for (const rule of commandRules) {
+      for (const pattern of rule.block) {
+        const denyPattern = `Bash(${pattern})`;
+        if (!settings.permissions.deny.includes(denyPattern)) {
+          settings.permissions.deny.push(denyPattern);
+        }
+      }
+    }
+    
+    writeFileSync(CLAUDE_SETTINGS_FILE, JSON.stringify(settings, null, 2));
+  } catch {
+    // Silently fail if settings parsing fails
+  }
 }
 
 /**
