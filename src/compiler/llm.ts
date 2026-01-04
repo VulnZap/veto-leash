@@ -153,8 +153,9 @@ Restriction: "${restriction}"`;
         contents: prompt,
         config: {
           temperature: 0,
-          maxOutputTokens: 2048,
-          // Remove native JSON parsing to handle partial/invalid JSON gracefully
+          maxOutputTokens: 4096,
+          responseMimeType: 'application/json',
+          responseSchema: POLICY_SCHEMA,
         },
       });
       
