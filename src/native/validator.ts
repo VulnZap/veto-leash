@@ -15,11 +15,53 @@
 import { existsSync, readdirSync, readFileSync } from 'fs';
 import { join, dirname, basename, relative, isAbsolute } from 'path';
 import { fileURLToPath } from 'url';
-import type { Policy } from '../types.js';
-import { checkContentAST } from '../ast/checker.js';
-import { initParser, loadLanguage, detectLanguage } from '../ast/parser.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Policy interface (inline to avoid import issues)
+interface Policy {
+  action: string;
+  include: string[];
+  exclude: string[];
+  description: string;
+  commandRules?: Array<{
+    block: string[];
+    reason: string;
+    suggest?: string;
+  }>;
+  contentRules?: Array<{
+    pattern: string;
+    fileTypes: string[];
+    reason: string;
+    suggest?: string;
+    mode?: string;
+    exceptions?: string[];
+  }>;
+}
+
+// AST modules - loaded dynamically to avoid crashes if not available
+let astAvailable = false;
+let checkContentAST: ((content: string, filePath: string, policy: Policy) => Promise<{ allowed: boolean; match?: { reason: string; suggest?: string; line?: number; text: string } }>) | null = null;
+let initParser: (() => Promise<void>) | null = null;
+let loadLanguage: ((lang: string) => Promise<unknown>) | null = null;
+let detectLanguage: ((filePath: string) => string | null) | null = null;
+
+async function loadASTModules(): Promise<void> {
+  try {
+    // @ts-ignore - Dynamic imports for deployed standalone module
+    const checker = await import('./ast/checker.js');
+    // @ts-ignore - Dynamic imports for deployed standalone module
+    const parser = await import('./ast/parser.js');
+    checkContentAST = checker.checkContentAST;
+    initParser = parser.initParser;
+    loadLanguage = parser.loadLanguage;
+    detectLanguage = parser.detectLanguage;
+    astAvailable = true;
+  } catch {
+    // AST modules not available - will use regex-only content checking
+    astAvailable = false;
+  }
+}
 
 // Common command aliases for matching
 const COMMAND_ALIASES: Record<string, string[]> = {
@@ -181,12 +223,12 @@ function isProtected(target: string, policy: Policy): boolean {
   const name = basename(normalized);
 
   const matchesInclude = policy.include.some(
-    (p) => matchesGlob(normalized, p) || matchesGlob(name, p)
+    (p: string) => matchesGlob(normalized, p) || matchesGlob(name, p)
   );
   if (!matchesInclude) return false;
 
   const matchesExclude = policy.exclude.some(
-    (p) => matchesGlob(normalized, p) || matchesGlob(name, p)
+    (p: string) => matchesGlob(normalized, p) || matchesGlob(name, p)
   );
   return !matchesExclude;
 }
@@ -244,6 +286,9 @@ async function readStdin(): Promise<string> {
 
 async function main(): Promise<void> {
   try {
+    // Try to load AST modules (may fail if dependencies not available)
+    await loadASTModules();
+    
     const inputText = await readStdin();
     if (!inputText.trim()) {
       outputAllow();
@@ -296,24 +341,26 @@ async function main(): Promise<void> {
       }
 
       if (filePath && content) {
-        // Check if file is a supported language for AST
-        const language = detectLanguage(filePath);
-        
-        if (language) {
-          // Initialize parser and load language
-          await initParser();
-          await loadLanguage(language);
+        // Check if AST modules loaded and file is a supported language
+        if (astAvailable && detectLanguage) {
+          const language = detectLanguage(filePath);
+          
+          if (language && initParser && loadLanguage && checkContentAST) {
+            // Initialize parser and load language
+            await initParser();
+            await loadLanguage(language);
 
-          // Check each policy with AST
-          for (const policy of policies) {
-            const result = await checkContentAST(content, filePath, policy);
-            if (!result.allowed && result.match) {
-              outputDeny(result.match.reason, {
-                suggest: result.match.suggest,
-                line: result.match.line,
-                match: result.match.text.slice(0, 50),
-              });
-              return;
+            // Check each policy with AST
+            for (const policy of policies) {
+              const result = await checkContentAST(content, filePath, policy);
+              if (!result.allowed && result.match) {
+                outputDeny(result.match.reason, {
+                  suggest: result.match.suggest,
+                  line: result.match.line,
+                  match: result.match.text.slice(0, 50),
+                });
+                return;
+              }
             }
           }
         }
