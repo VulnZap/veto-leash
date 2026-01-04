@@ -429,6 +429,228 @@ export const AST_BUILTINS: Record<string, ASTRule[]> = {
       regexPreFilter: 'alert',
     },
   ],
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PYTHON PATTERNS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  'no python eval': [
+    {
+      id: 'no-python-eval',
+      query: `(call function: (identifier) @fn (#eq? @fn "eval"))`,
+      languages: ['python'],
+      reason: 'eval() is a security risk',
+      suggest: 'Use ast.literal_eval() for safe evaluation or refactor',
+      regexPreFilter: 'eval',
+    },
+    {
+      id: 'no-python-exec',
+      query: `(call function: (identifier) @fn (#eq? @fn "exec"))`,
+      languages: ['python'],
+      reason: 'exec() is a security risk',
+      suggest: 'Refactor to avoid dynamic code execution',
+      regexPreFilter: 'exec',
+    },
+  ],
+
+  'no python print': [
+    {
+      id: 'no-python-print',
+      query: `(call function: (identifier) @fn (#eq? @fn "print"))`,
+      languages: ['python'],
+      reason: 'Use proper logging instead of print()',
+      suggest: 'Use logging module: logging.info(), logging.debug()',
+      regexPreFilter: 'print',
+    },
+  ],
+
+  'no requests': [
+    {
+      id: 'no-requests-import',
+      query: `(import_statement name: (dotted_name) @name (#eq? @name "requests"))`,
+      languages: ['python'],
+      reason: 'Use httpx or aiohttp instead of requests',
+      suggest: 'Use httpx for sync/async HTTP or aiohttp for async',
+      regexPreFilter: 'requests',
+    },
+    {
+      id: 'no-requests-from-import',
+      query: `(import_from_statement module_name: (dotted_name) @name (#eq? @name "requests"))`,
+      languages: ['python'],
+      reason: 'Use httpx or aiohttp instead of requests',
+      regexPreFilter: 'requests',
+    },
+  ],
+
+  'no pandas': [
+    {
+      id: 'no-pandas-import',
+      query: `(import_statement name: (dotted_name) @name (#match? @name "pandas"))`,
+      languages: ['python'],
+      reason: 'Use polars for better performance',
+      suggest: 'Use polars instead of pandas',
+      regexPreFilter: 'pandas',
+    },
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GO PATTERNS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  'no go fmt print': [
+    {
+      id: 'no-go-println',
+      query: `(call_expression function: (selector_expression operand: (identifier) @pkg (#eq? @pkg "fmt") field: (field_identifier) @fn (#match? @fn "^Print")))`,
+      languages: ['go'],
+      reason: 'Use structured logging instead of fmt.Print*',
+      suggest: 'Use log/slog or zerolog for structured logging',
+      regexPreFilter: 'fmt',
+    },
+  ],
+
+  'no go panic': [
+    {
+      id: 'no-go-panic',
+      query: `(call_expression function: (identifier) @fn (#eq? @fn "panic"))`,
+      languages: ['go'],
+      reason: 'Avoid panic in production code',
+      suggest: 'Return errors instead of panicking',
+      regexPreFilter: 'panic',
+    },
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RUST PATTERNS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  'no rust unwrap': [
+    {
+      id: 'no-rust-unwrap',
+      query: `(call_expression function: (field_expression field: (field_identifier) @fn (#eq? @fn "unwrap")))`,
+      languages: ['rust'],
+      reason: 'unwrap() can panic at runtime',
+      suggest: 'Use ? operator, expect(), or match for error handling',
+      regexPreFilter: 'unwrap',
+    },
+  ],
+
+  'no rust println': [
+    {
+      id: 'no-rust-println',
+      query: `(macro_invocation macro: (identifier) @name (#match? @name "^(println|print|dbg|eprintln|eprint)$"))`,
+      languages: ['rust'],
+      reason: 'Use proper logging instead of println!',
+      suggest: 'Use tracing or log crate for production logging',
+      regexPreFilter: 'print',
+    },
+  ],
+
+  'no rust unsafe': [
+    {
+      id: 'no-rust-unsafe',
+      query: `(unsafe_block) @unsafe`,
+      languages: ['rust'],
+      reason: 'Avoid unsafe blocks unless absolutely necessary',
+      suggest: 'Use safe Rust abstractions',
+      regexPreFilter: 'unsafe',
+    },
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // JAVA PATTERNS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  'no java sout': [
+    {
+      id: 'no-java-sout',
+      query: `(method_invocation object: (field_access object: (identifier) @sys (#eq? @sys "System") field: (identifier) @out (#eq? @out "out")) name: (identifier) @fn (#match? @fn "^print"))`,
+      languages: ['java'],
+      reason: 'Use proper logging instead of System.out',
+      suggest: 'Use SLF4J, Log4j, or java.util.logging',
+      regexPreFilter: 'System.out',
+    },
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // C/C++ PATTERNS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  'no c printf': [
+    {
+      id: 'no-c-printf',
+      query: `(call_expression function: (identifier) @fn (#match? @fn "^(printf|fprintf|sprintf|snprintf)$"))`,
+      languages: ['c', 'cpp'],
+      reason: 'printf can be vulnerable to format string attacks',
+      suggest: 'Use safer alternatives like puts, fputs, or C++ streams',
+      regexPreFilter: 'printf',
+    },
+  ],
+
+  'no cpp cout': [
+    {
+      id: 'no-cpp-cout',
+      query: `(expression_statement (binary_expression left: (identifier) @cout (#eq? @cout "cout")))`,
+      languages: ['cpp'],
+      reason: 'Use proper logging instead of std::cout',
+      suggest: 'Use spdlog or another logging library',
+      regexPreFilter: 'cout',
+    },
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CROSS-LANGUAGE SECURITY PATTERNS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  'no hardcoded secrets': [
+    // JavaScript/TypeScript
+    {
+      id: 'no-js-hardcoded-key',
+      query: `(variable_declarator name: (identifier) @name (#match? @name "(?i)(api_?key|secret|password|token|credential)") value: (string) @value)`,
+      languages: ['typescript', 'javascript'],
+      reason: 'Hardcoded secrets detected',
+      suggest: 'Use environment variables or a secrets manager',
+      regexPreFilter: 'key',
+    },
+    // Python
+    {
+      id: 'no-python-hardcoded-key',
+      query: `(assignment left: (identifier) @name (#match? @name "(?i)(api_?key|secret|password|token|credential)") right: (string) @value)`,
+      languages: ['python'],
+      reason: 'Hardcoded secrets detected',
+      suggest: 'Use environment variables or a secrets manager',
+      regexPreFilter: 'key',
+    },
+    // Go
+    {
+      id: 'no-go-hardcoded-key',
+      query: `(var_declaration (var_spec name: (identifier) @name (#match? @name "(?i)(apiKey|secret|password|token|credential)") value: (expression_list (interpreted_string_literal))))`,
+      languages: ['go'],
+      reason: 'Hardcoded secrets detected',
+      suggest: 'Use environment variables or a secrets manager',
+      regexPreFilter: 'key',
+    },
+  ],
+
+  'no sql injection': [
+    // JavaScript/TypeScript - string concatenation in SQL
+    {
+      id: 'no-js-sql-concat',
+      query: `(call_expression function: (member_expression property: (property_identifier) @fn (#match? @fn "^(query|execute|exec|run)$")) arguments: (arguments (template_string)))`,
+      languages: ['typescript', 'javascript'],
+      reason: 'Potential SQL injection via template literals',
+      suggest: 'Use parameterized queries with placeholders',
+      regexPreFilter: 'query',
+    },
+    // Python
+    {
+      id: 'no-python-sql-format',
+      query: `(call function: (attribute attribute: (identifier) @fn (#match? @fn "^(execute|executemany)$")) arguments: (argument_list (binary_expression operator: "%")))`,
+      languages: ['python'],
+      reason: 'Potential SQL injection via string formatting',
+      suggest: 'Use parameterized queries with placeholders',
+      regexPreFilter: 'execute',
+    },
+  ],
 };
 
 /**
@@ -461,9 +683,9 @@ export function getASTRules(restriction: string): ASTRule[] | null {
     }
   }
 
-  // Special handling for library restrictions
-  // "React is not allowed", "react is banned", "don't use react", etc. → 'no react'
+  // Special handling for library/pattern restrictions across languages
   const libraryPatterns = [
+    // JavaScript/TypeScript
     { match: /\breact\b/i, key: 'no react' },
     { match: /\blodash\b/i, key: 'no lodash' },
     { match: /\bmoment\b/i, key: 'no moment' },
@@ -471,6 +693,21 @@ export function getASTRules(restriction: string): ASTRule[] | null {
     { match: /\baxios\b/i, key: 'no axios' },
     { match: /\bconsole\.log\b/i, key: 'no console.log' },
     { match: /\bany\s*type/i, key: 'no any types' },
+    // Python
+    { match: /\brequests\b/i, key: 'no requests' },
+    { match: /\bpandas\b/i, key: 'no pandas' },
+    { match: /\bprint\b.*python/i, key: 'no python print' },
+    { match: /\beval\b.*python/i, key: 'no python eval' },
+    // Go
+    { match: /\bfmt\.print/i, key: 'no go fmt print' },
+    { match: /\bpanic\b.*go/i, key: 'no go panic' },
+    // Rust
+    { match: /\bunwrap\b.*rust/i, key: 'no rust unwrap' },
+    { match: /\bprintln\b.*rust/i, key: 'no rust println' },
+    { match: /\bunsafe\b.*rust/i, key: 'no rust unsafe' },
+    // Cross-language
+    { match: /\bhardcoded\s*(secret|key|password|token)/i, key: 'no hardcoded secrets' },
+    { match: /\bsql\s*injection/i, key: 'no sql injection' },
   ];
 
   // Check if this looks like a restriction (contains negative keywords)

@@ -20,13 +20,28 @@ export interface CommandRule {
  * AST-based rule for precise code pattern matching.
  * Uses tree-sitter S-expression queries for zero false positives.
  */
+/** Supported programming languages for AST analysis */
+export type SupportedLanguage = 
+  // JavaScript ecosystem
+  | 'typescript' | 'javascript' | 'tsx' | 'jsx'
+  // Python
+  | 'python'
+  // Systems languages
+  | 'go' | 'rust' | 'c' | 'cpp'
+  // JVM
+  | 'java' | 'kotlin'
+  // Web/scripting
+  | 'ruby' | 'php'
+  // Shell
+  | 'bash';
+
 export interface ASTRule {
   /** Unique identifier for this rule */
   id: string;
   /** Tree-sitter S-expression query */
   query: string;
   /** Languages this rule applies to */
-  languages: ('typescript' | 'javascript')[];
+  languages: SupportedLanguage[];
   /** Human-readable reason for blocking */
   reason: string;
   /** Optional suggestion for alternative */

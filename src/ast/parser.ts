@@ -35,7 +35,20 @@ export interface QueryCapture {
   node: SyntaxNode;
 }
 
-export type LanguageType = 'typescript' | 'javascript' | 'tsx' | 'jsx';
+// Supported languages - grouped by ecosystem
+export type LanguageType = 
+  // JavaScript ecosystem
+  | 'typescript' | 'javascript' | 'tsx' | 'jsx'
+  // Python
+  | 'python'
+  // Systems languages
+  | 'go' | 'rust' | 'c' | 'cpp'
+  // JVM
+  | 'java' | 'kotlin'
+  // Web/scripting
+  | 'ruby' | 'php'
+  // Shell
+  | 'bash';
 
 export interface ParseResult {
   tree: Tree;
@@ -53,12 +66,26 @@ const languages = new Map<LanguageType, Language>();
 const parsers = new Map<LanguageType, any>();
 const treeCache = new Map<string, { tree: Tree; hash: string }>();
 
-// Language WASM file URLs
-const LANGUAGE_WASM_URLS: Record<LanguageType, string> = {
+// Language WASM file URLs - tree-sitter grammars compiled to WASM
+// Using tree-sitter's official WASM releases where available
+const LANGUAGE_WASM_URLS: Partial<Record<LanguageType, string>> = {
+  // JavaScript ecosystem
   typescript: 'https://github.com/AdeAttwood/tree-sitter-typescript-wasm/releases/download/0.23.0/tree-sitter-typescript.wasm',
   tsx: 'https://github.com/AdeAttwood/tree-sitter-typescript-wasm/releases/download/0.23.0/tree-sitter-tsx.wasm',
   javascript: 'https://github.com/AdeAttwood/tree-sitter-javascript-wasm/releases/download/0.21.0/tree-sitter-javascript.wasm',
   jsx: 'https://github.com/AdeAttwood/tree-sitter-javascript-wasm/releases/download/0.21.0/tree-sitter-javascript.wasm',
+  // Python
+  python: 'https://github.com/AdeAttwood/tree-sitter-python-wasm/releases/download/0.23.0/tree-sitter-python.wasm',
+  // Go
+  go: 'https://github.com/AdeAttwood/tree-sitter-go-wasm/releases/download/0.23.0/tree-sitter-go.wasm',
+  // Rust
+  rust: 'https://github.com/AdeAttwood/tree-sitter-rust-wasm/releases/download/0.23.0/tree-sitter-rust.wasm',
+  // C/C++
+  c: 'https://github.com/AdeAttwood/tree-sitter-c-wasm/releases/download/0.23.0/tree-sitter-c.wasm',
+  cpp: 'https://github.com/AdeAttwood/tree-sitter-cpp-wasm/releases/download/0.23.0/tree-sitter-cpp.wasm',
+  // JVM
+  java: 'https://github.com/AdeAttwood/tree-sitter-java-wasm/releases/download/0.23.0/tree-sitter-java.wasm',
+  // Note: kotlin, ruby, php, bash WASMs need to be built or found
 };
 
 /**
@@ -156,6 +183,12 @@ export async function loadLanguage(languageType: LanguageType): Promise<Language
   } else {
     // Try to fetch from URL (requires network access)
     const url = LANGUAGE_WASM_URLS[languageType];
+    if (!url) {
+      throw new Error(
+        `Language ${languageType} is not yet supported. ` +
+        `Supported languages: ${Object.keys(LANGUAGE_WASM_URLS).join(', ')}`
+      );
+    }
     try {
       language = await LanguageClass.load(url);
     } catch (error) {
@@ -171,10 +204,32 @@ export async function loadLanguage(languageType: LanguageType): Promise<Language
 }
 
 /**
+ * Check if a language is supported (has WASM available)
+ */
+export function isLanguageSupported(languageType: LanguageType): boolean {
+  const localPath = getLocalWasmPath(languageType);
+  if (localPath && fs.existsSync(localPath)) return true;
+  return !!LANGUAGE_WASM_URLS[languageType];
+}
+
+/**
+ * Get WASM file name for a language
+ */
+function getWasmFileName(languageType: LanguageType): string {
+  // Map language types to their WASM file names
+  const mapping: Partial<Record<LanguageType, string>> = {
+    jsx: 'javascript',  // JSX uses JavaScript parser
+    tsx: 'tsx',         // TSX has its own parser
+  };
+  const base = mapping[languageType] || languageType;
+  return `tree-sitter-${base}.wasm`;
+}
+
+/**
  * Get local WASM file path if it exists
  */
 function getLocalWasmPath(languageType: LanguageType): string | null {
-  const wasmFile = `tree-sitter-${languageType === 'jsx' ? 'javascript' : languageType}.wasm`;
+  const wasmFile = getWasmFileName(languageType);
   
   // Try multiple locations
   const candidates = [
@@ -274,7 +329,10 @@ export async function parseFile(
 export function detectLanguage(filePath: string): LanguageType | null {
   const ext = filePath.split('.').pop()?.toLowerCase();
   switch (ext) {
+    // JavaScript ecosystem
     case 'ts':
+    case 'mts':
+    case 'cts':
       return 'typescript';
     case 'tsx':
       return 'tsx';
@@ -284,6 +342,45 @@ export function detectLanguage(filePath: string): LanguageType | null {
       return 'javascript';
     case 'jsx':
       return 'jsx';
+    // Python
+    case 'py':
+    case 'pyw':
+    case 'pyi':
+      return 'python';
+    // Go
+    case 'go':
+      return 'go';
+    // Rust
+    case 'rs':
+      return 'rust';
+    // C/C++
+    case 'c':
+    case 'h':
+      return 'c';
+    case 'cpp':
+    case 'cc':
+    case 'cxx':
+    case 'hpp':
+    case 'hxx':
+      return 'cpp';
+    // JVM
+    case 'java':
+      return 'java';
+    case 'kt':
+    case 'kts':
+      return 'kotlin';
+    // Web/scripting
+    case 'rb':
+    case 'rake':
+    case 'gemspec':
+      return 'ruby';
+    case 'php':
+      return 'php';
+    // Shell
+    case 'sh':
+    case 'bash':
+    case 'zsh':
+      return 'bash';
     default:
       return null;
   }

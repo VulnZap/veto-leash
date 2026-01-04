@@ -55,9 +55,33 @@ describe('AST Parser', () => {
     });
 
     it('returns null for unsupported files', () => {
-      expect(detectLanguage('file.py')).toBeNull();
-      expect(detectLanguage('file.go')).toBeNull();
       expect(detectLanguage('file.txt')).toBeNull();
+      expect(detectLanguage('file.csv')).toBeNull();
+      expect(detectLanguage('file.json')).toBeNull();
+    });
+
+    it('detects Python files', () => {
+      expect(detectLanguage('file.py')).toBe('python');
+      expect(detectLanguage('file.pyw')).toBe('python');
+    });
+
+    it('detects Go files', () => {
+      expect(detectLanguage('file.go')).toBe('go');
+    });
+
+    it('detects Rust files', () => {
+      expect(detectLanguage('file.rs')).toBe('rust');
+    });
+
+    it('detects Java files', () => {
+      expect(detectLanguage('file.java')).toBe('java');
+    });
+
+    it('detects C/C++ files', () => {
+      expect(detectLanguage('file.c')).toBe('c');
+      expect(detectLanguage('file.cpp')).toBe('cpp');
+      expect(detectLanguage('file.h')).toBe('c');
+      expect(detectLanguage('file.hpp')).toBe('cpp');
     });
   });
 
