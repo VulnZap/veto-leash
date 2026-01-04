@@ -149,7 +149,7 @@ Restriction: "${restriction}"`;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       const response = await client.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-2.0-flash',
         contents: prompt,
         config: {
           temperature: 0,
@@ -158,6 +158,15 @@ Restriction: "${restriction}"`;
           responseSchema: POLICY_SCHEMA,
         },
       });
+      
+      // Debug: check finish reason
+      const candidate = response.candidates?.[0];
+      const finishReason = candidate?.finishReason;
+      
+      // If model hit length limit or other issue, log it
+      if (finishReason && finishReason !== 'STOP') {
+        console.error(`[DEBUG] Gemini finishReason: ${finishReason}`);
+      }
       
       let text = response.text || '';
       
@@ -171,7 +180,7 @@ Restriction: "${restriction}"`;
       text = text.trim();
 
       if (!text) {
-        throw new Error('Empty response from Gemini');
+        throw new Error(`Empty response from Gemini (finishReason: ${finishReason})`);
       }
 
       try {
@@ -190,8 +199,8 @@ Restriction: "${restriction}"`;
         return parsed;
       } catch (parseError: any) {
         // If parsing fails, it's likely truncated or hallucinated
-        const snippet = text.length > 200 ? text.slice(0, 200) + '...' : text;
-        throw new Error(`Failed to parse policy JSON: ${parseError.message}\n\n[RAW OUTPUT snippet]:\n${snippet}\n`);
+        const snippet = text.length > 300 ? text.slice(0, 300) + '...' : text;
+        throw new Error(`Failed to parse policy JSON: ${parseError.message}\n\nfinishReason: ${finishReason}\n[RAW OUTPUT snippet]:\n${snippet}\n`);
       }
 
     } catch (error: any) {

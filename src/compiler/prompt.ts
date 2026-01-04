@@ -89,4 +89,4 @@ Common TS Queries:
 - Calls: (call_expression function: (member_expression property: (property_identifier) @p (#eq? @p "log")))
 - Types: (type_annotation (predefined_type) @t (#eq? @t "any"))
 
-Output JSON only. No explanation.`;
+IMPORTANT: Keep description under 100 characters. Output JSON only.`;
