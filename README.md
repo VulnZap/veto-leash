@@ -176,7 +176,7 @@ Apache-2.0
 ---
 
 <p align="center">
-  Built by <a href="https://plaw.io">Plaw, Inc.</a> for the <a href="https://veto.dev">Veto</a> product line.
+  Built by <a href="https://plaw.io">Plaw, Inc.</a> for the <a href="https://veto.run">Veto</a> product line.
   <br><br>
   <strong>Ship faster. Sleep better.</strong>
 </p>
