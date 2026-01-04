@@ -21,26 +21,72 @@ BUILT-IN AST RULES (RETURN MINIMAL POLICY)
 Return: { "action": "modify", "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"], "exclude": [], "description": "..." }
 
 ═══════════════════════════════════════════════════════════════
-PATTERNS
+FILE & COMMAND PATTERNS
 ═══════════════════════════════════════════════════════════════
-FILE-LEVEL:
-  "test files" -> include: ["*.test.*", "*.spec.*", "__tests__/**"]
-  "config files" -> include: ["*.config.*", "tsconfig*", ".eslintrc*"]
-  "env files" -> include: [".env", ".env.*"], exclude: [".env.example"]
+"test files" -> include: ["*.test.*", "*.spec.*", "__tests__/**"]
+"env files" -> include: [".env", ".env.*"], exclude: [".env.example"]
+"prefer pnpm" -> commandRules: [{ block: ["npm i*", "npm ci"], suggest: "pnpm i", reason: "..." }]
 
-COMMAND-LEVEL:
-  "prefer pnpm" -> commandRules: [{ block: ["npm i*", "npm ci"], suggest: "pnpm i", reason: "..." }]
+═══════════════════════════════════════════════════════════════
+CONTENT-LEVEL POLICIES (contentRules) - COMPREHENSIVE
+═══════════════════════════════════════════════════════════════
 
-CONTENT-LEVEL (non-JS/TS):
-  contentRules: [{ pattern: "regex", fileTypes: ["*.md"], reason: "..." }]
+CRITICAL: Generate MULTIPLE patterns to catch ALL import/usage variants.
 
-AST RULES (JS/TS - PREFERRED):
+EXAMPLE: "no lodash" must catch:
+- import _ from 'lodash'
+- import { map } from 'lodash'
+- const _ = require('lodash')
+- import map from 'lodash/map'
+
+  contentRules: [
+    {
+      pattern: "(?:import|require)\\s*(?:\\(|\\s).*['\"]lodash(?:[-./][^'\"]*)?['\"]",
+      fileTypes: ["*.ts", "*.js", "*.tsx", "*.jsx"],
+      reason: "Use native methods",
+      mode: "strict"
+    }
+  ]
+
+EXAMPLE: "no console.log" must catch:
+- console.log("foo")
+- console['log']("foo")
+- const { log } = console
+
+  contentRules: [
+    {
+      pattern: "\\bconsole\\s*\\.\\s*log\\s*\\(",
+      fileTypes: ["*.ts", "*.js"],
+      mode: "strict"
+    },
+    {
+      pattern: "console\\s*\\[\\s*['\"]log['\"]\\s*\\]",
+      mode: "strict"
+    },
+    {
+      pattern: "\\{\\s*log(?:\\s*:\\s*\\w+)?\\s*\\}\\s*=\\s*console",
+      mode: "strict"
+    }
+  ]
+
+═══════════════════════════════════════════════════════════════
+AST RULES (JS/TS - PREFERRED)
+═══════════════════════════════════════════════════════════════
+
+For TypeScript/JavaScript, use astRules for 100% precision.
+
+Format:
   astRules: [{
     id: "rule-id",
     query: "(tree_sitter_query) @capture",
     languages: ["typescript", "javascript"],
     reason: "Why blocked",
-    regexPreFilter: "fast_check"
+    regexPreFilter: "fast_check_string" 
   }]
+
+Common TS Queries:
+- Imports: (import_statement source: (string) @s (#match? @s "pattern"))
+- Calls: (call_expression function: (member_expression property: (property_identifier) @p (#eq? @p "log")))
+- Types: (type_annotation (predefined_type) @t (#eq? @t "any"))
 
 Output JSON only. No explanation.`;
