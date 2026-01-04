@@ -952,3 +952,4 @@ $ leash sync
 - **229 tests** passing.
 - Manual verification of TUI and API retry logic.
 - Released as `v1.1.2`.
+- Optimized prompt size in `v1.1.3` to avoid `Request Entity Too Large` errors.
