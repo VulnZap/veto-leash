@@ -56,6 +56,12 @@ export async function installClaudeCodeHook(): Promise<void> {
   // Create hooks directory
   mkdirSync(CLAUDE_HOOKS_DIR, { recursive: true });
   mkdirSync(join(CLAUDE_HOOKS_DIR, 'policies'), { recursive: true });
+  
+  // Create package.json for ES modules support
+  writeFileSync(
+    join(CLAUDE_HOOKS_DIR, 'package.json'),
+    JSON.stringify({ type: 'module' }, null, 2)
+  );
 
   // Copy the Node.js validator and its dependencies
   // The validator is at dist/native/validator.js relative to this file's location
