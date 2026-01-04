@@ -200,11 +200,11 @@ async function syncDenyRulesToSettings(commandRules: Array<{ block: string[]; re
     // e.g., "npm install lodash*" -> "Bash(npm install lodash:*)"
     for (const rule of commandRules) {
       for (const pattern of rule.block) {
-        // Convert trailing * to :* for Claude Code's prefix matching syntax
-        // But don't touch standalone * or patterns that already have :*
+        // Convert ALL * to :* for Claude Code's prefix matching syntax
+        // But don't touch patterns that already have :*
         let normalizedPattern = pattern;
-        if (pattern.endsWith('*') && !pattern.endsWith(':*') && pattern !== '*') {
-          normalizedPattern = pattern.slice(0, -1) + ':*';
+        if (pattern.includes('*') && !pattern.includes(':*')) {
+          normalizedPattern = pattern.replace(/\*/g, ':*');
         }
         const denyPattern = `Bash(${normalizedPattern})`;
         if (!settings.permissions.deny.includes(denyPattern)) {
