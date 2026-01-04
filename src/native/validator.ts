@@ -84,29 +84,35 @@ interface HookInput {
 
 interface HookOutput {
   hookSpecificOutput: {
+    hookEventName: string;
     permissionDecision: 'allow' | 'deny';
+    permissionDecisionReason?: string;
   };
-  systemMessage?: string;
 }
 
 function outputAllow(): void {
-  const output: HookOutput = {
-    hookSpecificOutput: { permissionDecision: 'allow' },
+  const output = {
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'allow',
+    },
   };
   console.log(JSON.stringify(output));
   process.exit(0);
 }
 
 function outputDeny(reason: string, opts?: { suggest?: string; line?: number; match?: string }): void {
-  let message = `veto-leash: BLOCKED\n\nReason: ${reason}`;
-  if (opts?.line) message += `\nLine: ${opts.line}`;
-  if (opts?.match) message += `\nMatch: ${opts.match}`;
-  if (opts?.suggest) message += `\n\nSuggested alternative: ${opts.suggest}`;
-  message += '\n\nThe action was blocked by a veto-leash policy. Please follow the suggested alternative or modify your approach.';
+  let message = `veto-leash: BLOCKED - ${reason}`;
+  if (opts?.line) message += ` (line ${opts.line})`;
+  if (opts?.match) message += ` [${opts.match}]`;
+  if (opts?.suggest) message += `. Use: ${opts.suggest}`;
 
-  const output: HookOutput = {
-    hookSpecificOutput: { permissionDecision: 'deny' },
-    systemMessage: message,
+  const output = {
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'deny',
+      permissionDecisionReason: message,
+    },
   };
   console.log(JSON.stringify(output));
   process.exit(0);
