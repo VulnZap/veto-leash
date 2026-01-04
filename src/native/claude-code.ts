@@ -196,10 +196,17 @@ async function syncDenyRulesToSettings(commandRules: Array<{ block: string[]; re
     }
     
     // Convert command patterns to Claude's deny format
-    // e.g., "npm install lodash*" -> "Bash(npm install lodash*)"
+    // Claude Code uses :* for prefix matching, not just *
+    // e.g., "npm install lodash*" -> "Bash(npm install lodash:*)"
     for (const rule of commandRules) {
       for (const pattern of rule.block) {
-        const denyPattern = `Bash(${pattern})`;
+        // Convert trailing * to :* for Claude Code's prefix matching syntax
+        // But don't touch standalone * or patterns that already have :*
+        let normalizedPattern = pattern;
+        if (pattern.endsWith('*') && !pattern.endsWith(':*') && pattern !== '*') {
+          normalizedPattern = pattern.slice(0, -1) + ':*';
+        }
+        const denyPattern = `Bash(${normalizedPattern})`;
         if (!settings.permissions.deny.includes(denyPattern)) {
           settings.permissions.deny.push(denyPattern);
         }

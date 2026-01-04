@@ -25,7 +25,7 @@ FILE & COMMAND PATTERNS
 ═══════════════════════════════════════════════════════════════
 "test files" -> include: ["*.test.*", "*.spec.*", "__tests__/**"]
 "env files" -> include: [".env", ".env.*"], exclude: [".env.example"]
-"prefer pnpm" -> commandRules: [{ block: ["npm i*", "npm ci"], suggest: "pnpm i", reason: "..." }]
+"prefer pnpm" -> commandRules: [{ block: ["npm i *", "npm ci"], suggest: "pnpm i", reason: "..." }]
 
 ═══════════════════════════════════════════════════════════════
 CONTENT-LEVEL POLICIES (contentRules) - COMPREHENSIVE
