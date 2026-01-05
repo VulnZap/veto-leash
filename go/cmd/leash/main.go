@@ -3,9 +3,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -17,20 +22,128 @@ import (
 	"github.com/vulnzap/leash/internal/engine"
 )
 
-const version = "2.0.4"
+const version = "2.1.0"
 
-// ASCII Logo - VETO branding
+// ══════════════════════════════════════════════════════════════════════════════
+// VETO BRANDING
+// ══════════════════════════════════════════════════════════════════════════════
+
 const logo = `
-    @@     @@    @@@@@@@       @@       @@@@@@@     
-    @@     @@   @@     @@      @@      @@     @@    
-     @@   @@    @@@@@@@@@  @@@@@@@@@@  @@     @@    
-      @@ @@     @@             @@      @@     @@    
-      @@ @@     @@             @@      @@     @@    
-       @@@       @@@@@@@   @@@@@@@@@@   @@@@@@@     `
+ ██╗   ██╗███████╗████████╗ ██████╗ 
+ ██║   ██║██╔════╝╚══██╔══╝██╔═══██╗
+ ██║   ██║█████╗     ██║   ██║   ██║
+ ╚██╗ ██╔╝██╔══╝     ██║   ██║   ██║
+  ╚████╔╝ ███████╗   ██║   ╚██████╔╝
+   ╚═══╝  ╚══════╝   ╚═╝    ╚═════╝ `
 
-const logoSmall = `◼ veto`
+const logoCompact = `█▀▀█ VETO`
 
-// Views
+// Brand colors
+var (
+	orange    = lipgloss.Color("#f5a524") // Veto Orange
+	white     = lipgloss.Color("#f5f5f5") // Light
+	black     = lipgloss.Color("#000000") // Dark
+	darkGray  = lipgloss.Color("#1a1a1a")
+	midGray   = lipgloss.Color("#666666")
+	lightGray = lipgloss.Color("#aaaaaa")
+	green     = lipgloss.Color("#22c55e")
+	red       = lipgloss.Color("#ef4444")
+)
+
+// Adaptive colors - Apple-quality dark mode
+var (
+	textColor   = lipgloss.AdaptiveColor{Light: "#000000", Dark: "#ffffff"} // Pure white in dark
+	textSecond  = lipgloss.AdaptiveColor{Light: "#333333", Dark: "#e0e0e0"} // High contrast secondary
+	textMuted   = lipgloss.AdaptiveColor{Light: "#666666", Dark: "#a0a0a0"} // Readable muted
+	textDim     = lipgloss.AdaptiveColor{Light: "#999999", Dark: "#707070"} // Subtle but visible
+	borderColor = lipgloss.AdaptiveColor{Light: "#e0e0e0", Dark: "#404040"} // Visible borders
+	bgSubtle    = lipgloss.AdaptiveColor{Light: "#f5f5f5", Dark: "#1a1a1a"} // Subtle background
+	selectedBg  = lipgloss.AdaptiveColor{Light: "#fff7ed", Dark: "#2a2000"} // Orange tint selection
+)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STYLES
+// ══════════════════════════════════════════════════════════════════════════════
+
+var (
+	// Logo
+	logoStyle = lipgloss.NewStyle().
+			Foreground(orange).
+			Bold(true)
+
+	// Text
+	titleStyle = lipgloss.NewStyle().
+			Foreground(textColor).
+			Bold(true)
+
+	subtitleStyle = lipgloss.NewStyle().
+			Foreground(textSecond)
+
+	mutedStyle = lipgloss.NewStyle().
+			Foreground(textMuted)
+
+	dimStyle = lipgloss.NewStyle().
+			Foreground(textDim)
+
+	orangeStyle = lipgloss.NewStyle().
+			Foreground(orange).
+			Bold(true)
+
+	successStyle = lipgloss.NewStyle().
+			Foreground(green)
+
+	errorStyle = lipgloss.NewStyle().
+			Foreground(red)
+
+	// Keys
+	keyStyle = lipgloss.NewStyle().
+			Foreground(orange).
+			Bold(true)
+
+	keyDescStyle = lipgloss.NewStyle().
+			Foreground(textSecond)
+
+	// Panels
+	panelStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(borderColor).
+			Padding(1, 2)
+
+	panelActiveStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(orange).
+				Padding(1, 2)
+
+	panelHeaderStyle = lipgloss.NewStyle().
+				Foreground(textColor).
+				Bold(true).
+				MarginBottom(1)
+
+	// List items
+	itemStyle = lipgloss.NewStyle().
+			Foreground(textColor)
+
+	itemSelectedStyle = lipgloss.NewStyle().
+				Foreground(orange).
+				Bold(true)
+
+	// Status bar
+	statusBarStyle = lipgloss.NewStyle().
+			Foreground(textMuted).
+			Background(bgSubtle).
+			Padding(0, 1)
+
+	// Tags
+	tagStyle = lipgloss.NewStyle().
+			Foreground(orange).
+			Background(selectedBg).
+			Padding(0, 1)
+)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// VIEWS & STATE
+// ══════════════════════════════════════════════════════════════════════════════
+
 type view int
 
 const (
@@ -40,159 +153,85 @@ const (
 	viewAddPolicy
 	viewCompiling
 	viewHelp
+	viewWelcome
+	viewUpdate
 )
 
-// Theme - VETO brand colors
-// Orange: #f5a524, White: #f5f5f5, Black: #000000
-type theme struct {
-	primary    lipgloss.AdaptiveColor
-	secondary  lipgloss.AdaptiveColor
-	muted      lipgloss.AdaptiveColor
-	accent     lipgloss.AdaptiveColor // Veto Orange
-	success    lipgloss.AdaptiveColor
-	warning    lipgloss.AdaptiveColor
-	error      lipgloss.AdaptiveColor
-	border     lipgloss.AdaptiveColor
-	highlight  lipgloss.AdaptiveColor
-	background lipgloss.AdaptiveColor
-}
-
-var t = theme{
-	// Dark mode: white text on black | Light mode: black text on white
-	primary:    lipgloss.AdaptiveColor{Light: "#000000", Dark: "#f5f5f5"},
-	secondary:  lipgloss.AdaptiveColor{Light: "#333333", Dark: "#cccccc"},
-	muted:      lipgloss.AdaptiveColor{Light: "#666666", Dark: "#888888"},
-	accent:     lipgloss.AdaptiveColor{Light: "#f5a524", Dark: "#f5a524"}, // Veto Orange - same in both
-	success:    lipgloss.AdaptiveColor{Light: "#059669", Dark: "#34d399"},
-	warning:    lipgloss.AdaptiveColor{Light: "#f5a524", Dark: "#f5a524"}, // Use orange for warnings too
-	error:      lipgloss.AdaptiveColor{Light: "#dc2626", Dark: "#f87171"},
-	border:     lipgloss.AdaptiveColor{Light: "#e5e5e5", Dark: "#333333"},
-	highlight:  lipgloss.AdaptiveColor{Light: "#fff7ed", Dark: "#1a1a1a"}, // Slight orange tint in light
-	background: lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#000000"},
-}
-
-// Styles
-var (
-	baseStyle = lipgloss.NewStyle()
-
-	logoStyle = lipgloss.NewStyle().
-			Foreground(t.accent).
-			Bold(true)
-
-	titleStyle = lipgloss.NewStyle().
-			Foreground(t.primary).
-			Bold(true).
-			MarginBottom(1)
-
-	subtitleStyle = lipgloss.NewStyle().
-			Foreground(t.muted).
-			Italic(true)
-
-	mutedStyle = lipgloss.NewStyle().
-			Foreground(t.muted)
-
-	accentStyle = lipgloss.NewStyle().
-			Foreground(t.accent).
-			Bold(true)
-
-	successStyle = lipgloss.NewStyle().
-			Foreground(t.success)
-
-	warningStyle = lipgloss.NewStyle().
-			Foreground(t.warning)
-
-	errorStyle = lipgloss.NewStyle().
-			Foreground(t.error)
-
-	panelStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(t.border).
-			Padding(1, 2)
-
-	activePanelStyle = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(t.accent).
-				Padding(1, 2)
-
-	selectedStyle = lipgloss.NewStyle().
-			Foreground(t.accent).
-			Bold(true)
-
-	keyStyle = lipgloss.NewStyle().
-			Foreground(t.accent).
-			Bold(true)
-
-	helpKeyStyle = lipgloss.NewStyle().
-			Foreground(t.muted)
-
-	statusBarStyle = lipgloss.NewStyle().
-			Foreground(t.muted).
-			Padding(0, 1)
-)
-
-// Model
 type model struct {
-	view     view
-	width    int
-	height   int
-	ready    bool
-	quitting bool
+	// Window
+	width  int
+	height int
+	ready  bool
+
+	// Navigation
+	view          view
+	previousView  view
+	selectedIndex int
+	quitting      bool
 
 	// Data
 	policies []string
 	agents   []agent.Agent
 
 	// UI State
-	selectedPolicy int
-	selectedAgent  int
-	message        string
-	messageType    string // "success", "error", "info"
+	message     string
+	messageType string // success, error, info
+	showWelcome bool
+	updateAvail string // new version if available
 
 	// Components
-	textInput textinput.Model
-	spinner   spinner.Model
+	input   textinput.Model
+	spinner spinner.Model
 }
 
 func newModel() model {
 	// Text input
 	ti := textinput.New()
-	ti.Placeholder = "no lodash"
+	ti.Placeholder = "describe your policy..."
 	ti.CharLimit = 200
-	ti.Width = 40
-	ti.PromptStyle = accentStyle
-	ti.TextStyle = lipgloss.NewStyle().Foreground(t.primary)
+	ti.Width = 50
+	ti.PromptStyle = orangeStyle
+	ti.TextStyle = lipgloss.NewStyle().Foreground(textColor)
 	ti.PlaceholderStyle = mutedStyle
+	ti.Cursor.Style = orangeStyle
 
 	// Spinner
 	sp := spinner.New()
-	sp.Spinner = spinner.Points
-	sp.Style = accentStyle
+	sp.Spinner = spinner.Dot
+	sp.Style = orangeStyle
 
-	// Load policies
+	// Load data
 	var policies []string
 	if config.Exists() {
-		if path, err := config.Find(); err == nil {
-			if cfg, err := config.Load(path); err == nil {
+		if path, _ := config.Find(); path != "" {
+			if cfg, _ := config.Load(path); cfg != nil {
 				policies = cfg.Policies
 			}
 		}
 	}
-
-	// Detect agents
 	agents := agent.DetectInstalled()
 
+	// Check if first run
+	showWelcome := !config.Exists() && len(agents) > 0
+
 	return model{
-		view:      viewDashboard,
-		policies:  policies,
-		agents:    agents,
-		textInput: ti,
-		spinner:   sp,
+		view:        viewDashboard,
+		policies:    policies,
+		agents:      agents,
+		showWelcome: showWelcome,
+		input:       ti,
+		spinner:     sp,
 	}
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TEA INTERFACE
+// ══════════════════════════════════════════════════════════════════════════════
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		textinput.Blink,
+		checkForUpdate,
 	)
 }
 
@@ -206,26 +245,39 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ready = true
 
 	case tea.KeyMsg:
+		// Welcome screen
+		if m.showWelcome {
+			switch msg.String() {
+			case "enter", "y":
+				m.showWelcome = false
+				return m, runInit()
+			case "n", "esc", "q":
+				m.showWelcome = false
+			}
+			return m, nil
+		}
+
 		// Text input mode
-		if m.view == viewAddPolicy && m.textInput.Focused() {
+		if m.view == viewAddPolicy && m.input.Focused() {
 			switch msg.String() {
 			case "enter":
-				policy := strings.TrimSpace(m.textInput.Value())
+				policy := strings.TrimSpace(m.input.Value())
 				if policy != "" {
 					m.view = viewCompiling
-					m.textInput.Reset()
+					m.input.Reset()
 					return m, tea.Batch(m.spinner.Tick, compilePolicy(policy))
 				}
 			case "esc":
-				m.textInput.Blur()
-				m.textInput.Reset()
-				m.view = viewDashboard
+				m.input.Blur()
+				m.input.Reset()
+				m.view = m.previousView
 				return m, nil
 			default:
 				var cmd tea.Cmd
-				m.textInput, cmd = m.textInput.Update(msg)
+				m.input, cmd = m.input.Update(msg)
 				return m, cmd
 			}
+			return m, nil
 		}
 
 		// Global keys
@@ -234,75 +286,85 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.quitting = true
 			return m, tea.Quit
 
+		case "?":
+			if m.view == viewHelp {
+				m.view = m.previousView
+			} else {
+				m.previousView = m.view
+				m.view = viewHelp
+			}
+
 		case "esc":
 			if m.view != viewDashboard {
 				m.view = viewDashboard
 				m.message = ""
+				m.selectedIndex = 0
 			}
 
-		case "?":
-			if m.view == viewHelp {
-				m.view = viewDashboard
-			} else {
-				m.view = viewHelp
+		// Navigation
+		case "1", "h":
+			if m.view == viewDashboard {
+				m.view = viewPolicies
+				m.selectedIndex = 0
 			}
-
-		// Dashboard navigation
-		case "1", "p":
-			m.view = viewPolicies
 		case "2", "g":
-			m.view = viewAgents
-		case "a":
-			m.view = viewAddPolicy
-			m.textInput.Focus()
-			return m, textinput.Blink
-		case "i":
-			return m, runInit(&m)
-		case "s":
-			return m, runSync(&m)
+			if m.view == viewDashboard {
+				m.view = viewAgents
+				m.selectedIndex = 0
+			}
+		case "tab":
+			if m.view == viewPolicies {
+				m.view = viewAgents
+				m.selectedIndex = 0
+			} else if m.view == viewAgents {
+				m.view = viewPolicies
+				m.selectedIndex = 0
+			}
 
 		// List navigation
 		case "j", "down":
-			if m.view == viewPolicies && len(m.policies) > 0 {
-				m.selectedPolicy = (m.selectedPolicy + 1) % len(m.policies)
-			} else if m.view == viewAgents && len(m.agents) > 0 {
-				m.selectedAgent = (m.selectedAgent + 1) % len(m.agents)
-			}
+			m.navigateDown()
 		case "k", "up":
+			m.navigateUp()
+
+		// Actions
+		case "a":
+			m.previousView = m.view
+			m.view = viewAddPolicy
+			m.input.Focus()
+			return m, textinput.Blink
+		case "d", "backspace", "x":
 			if m.view == viewPolicies && len(m.policies) > 0 {
-				m.selectedPolicy--
-				if m.selectedPolicy < 0 {
-					m.selectedPolicy = len(m.policies) - 1
-				}
-			} else if m.view == viewAgents && len(m.agents) > 0 {
-				m.selectedAgent--
-				if m.selectedAgent < 0 {
-					m.selectedAgent = len(m.agents) - 1
-				}
+				return m, m.deleteSelectedPolicy()
 			}
-		case "d", "backspace":
-			if m.view == viewPolicies && len(m.policies) > 0 {
-				policy := m.policies[m.selectedPolicy]
-				if err := config.RemovePolicy(policy); err == nil {
-					m.policies = append(m.policies[:m.selectedPolicy], m.policies[m.selectedPolicy+1:]...)
-					if m.selectedPolicy >= len(m.policies) && m.selectedPolicy > 0 {
-						m.selectedPolicy--
+		case "enter", " ":
+			return m, m.handleEnter()
+		case "i":
+			return m, runInit()
+		case "s":
+			return m, runSync()
+		case "u":
+			if m.updateAvail != "" {
+				return m, runUpdate()
+			}
+		case "r":
+			// Refresh
+			m.agents = agent.DetectInstalled()
+			if config.Exists() {
+				if path, _ := config.Find(); path != "" {
+					if cfg, _ := config.Load(path); cfg != nil {
+						m.policies = cfg.Policies
 					}
-					m.message = "Removed: " + policy
-					m.messageType = "info"
 				}
 			}
-		case "enter":
-			if m.view == viewAgents && len(m.agents) > 0 {
-				a := m.agents[m.selectedAgent]
-				if err := agent.Install(a.ID); err == nil {
-					m.message = "Synced to " + a.Name
-					m.messageType = "success"
-				} else {
-					m.message = err.Error()
-					m.messageType = "error"
-				}
-			}
+			m.message = "Refreshed"
+			m.messageType = "info"
+		}
+
+	// Messages
+	case updateCheckMsg:
+		if msg.newVersion != "" && msg.newVersion != version {
+			m.updateAvail = msg.newVersion
 		}
 
 	case policyCompiledMsg:
@@ -319,7 +381,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.messageType = "success"
 			}
 		}
-		m.view = viewDashboard
+		m.view = m.previousView
 
 	case initDoneMsg:
 		if msg.err != nil {
@@ -329,11 +391,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.message = "Initialized .leash"
 			m.messageType = "success"
 			// Reload
-			if config.Exists() {
-				if path, err := config.Find(); err == nil {
-					if cfg, err := config.Load(path); err == nil {
-						m.policies = cfg.Policies
-					}
+			if path, _ := config.Find(); path != "" {
+				if cfg, _ := config.Load(path); cfg != nil {
+					m.policies = cfg.Policies
 				}
 			}
 		}
@@ -342,9 +402,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.message = msg.err.Error()
 			m.messageType = "error"
+		} else if msg.count == 0 {
+			m.message = "No agents to sync"
+			m.messageType = "error"
 		} else {
-			m.message = fmt.Sprintf("Synced to %d agents", msg.count)
+			m.message = fmt.Sprintf("Synced to %d agent(s)", msg.count)
 			m.messageType = "success"
+		}
+
+	case policyDeletedMsg:
+		if msg.err != nil {
+			m.message = msg.err.Error()
+			m.messageType = "error"
+		} else {
+			// Remove from list
+			if msg.index < len(m.policies) {
+				m.policies = append(m.policies[:msg.index], m.policies[msg.index+1:]...)
+			}
+			if m.selectedIndex >= len(m.policies) && m.selectedIndex > 0 {
+				m.selectedIndex--
+			}
+			m.message = "Removed policy"
+			m.messageType = "info"
+		}
+
+	case updateDoneMsg:
+		if msg.err != nil {
+			m.message = "Update failed: " + msg.err.Error()
+			m.messageType = "error"
+		} else {
+			m.message = "Updated! Restart leash to use new version"
+			m.messageType = "success"
+			m.updateAvail = ""
 		}
 
 	case spinner.TickMsg:
@@ -358,6 +447,73 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+func (m *model) navigateDown() {
+	max := 0
+	switch m.view {
+	case viewPolicies:
+		max = len(m.policies)
+	case viewAgents:
+		max = len(m.agents)
+	case viewDashboard:
+		max = 2 // policies, agents
+	}
+	if max > 0 {
+		m.selectedIndex = (m.selectedIndex + 1) % max
+	}
+}
+
+func (m *model) navigateUp() {
+	max := 0
+	switch m.view {
+	case viewPolicies:
+		max = len(m.policies)
+	case viewAgents:
+		max = len(m.agents)
+	case viewDashboard:
+		max = 2
+	}
+	if max > 0 {
+		m.selectedIndex--
+		if m.selectedIndex < 0 {
+			m.selectedIndex = max - 1
+		}
+	}
+}
+
+func (m *model) handleEnter() tea.Cmd {
+	switch m.view {
+	case viewDashboard:
+		if m.selectedIndex == 0 {
+			m.view = viewPolicies
+		} else {
+			m.view = viewAgents
+		}
+		m.selectedIndex = 0
+	case viewAgents:
+		if len(m.agents) > 0 && m.selectedIndex < len(m.agents) {
+			a := m.agents[m.selectedIndex]
+			return syncAgent(a.ID)
+		}
+	}
+	return nil
+}
+
+func (m *model) deleteSelectedPolicy() tea.Cmd {
+	if m.selectedIndex < len(m.policies) {
+		policy := m.policies[m.selectedIndex]
+		index := m.selectedIndex
+		return func() tea.Msg {
+			err := config.RemovePolicy(policy)
+			return policyDeletedMsg{index: index, err: err}
+		}
+	}
+	return nil
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// VIEW RENDERING
+// ══════════════════════════════════════════════════════════════════════════════
+
 func (m model) View() string {
 	if m.quitting {
 		return ""
@@ -366,8 +522,56 @@ func (m model) View() string {
 		return "\n  Loading..."
 	}
 
-	var content string
+	// Welcome screen
+	if m.showWelcome {
+		return m.renderWelcome()
+	}
 
+	// Build layout
+	header := m.renderHeader()
+	content := m.renderContent()
+	statusBar := m.renderStatusBar()
+
+	// Compose
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		header,
+		content,
+		statusBar,
+	)
+}
+
+func (m model) renderHeader() string {
+	// Logo
+	logoView := logoStyle.Render(logo)
+
+	// Right side info
+	versionStr := mutedStyle.Render("v" + version)
+	if m.updateAvail != "" {
+		versionStr = orangeStyle.Render("v"+version) + mutedStyle.Render(" → ") + successStyle.Render("v"+m.updateAvail+" available!")
+	}
+
+	// Center logo
+	logoWidth := lipgloss.Width(logoView)
+	padLeft := (m.width - logoWidth) / 2
+	if padLeft < 0 {
+		padLeft = 0
+	}
+
+	header := lipgloss.JoinVertical(
+		lipgloss.Center,
+		strings.Repeat(" ", padLeft)+logoView,
+		"",
+		lipgloss.PlaceHorizontal(m.width, lipgloss.Center, versionStr),
+	)
+
+	return header + "\n"
+}
+
+func (m model) renderContent() string {
+	contentHeight := m.height - 12 // header + status bar
+
+	var content string
 	switch m.view {
 	case viewDashboard:
 		content = m.renderDashboard()
@@ -383,219 +587,206 @@ func (m model) View() string {
 		content = m.renderHelp()
 	}
 
+	// Center content
 	return lipgloss.Place(
-		m.width, m.height,
+		m.width, contentHeight,
 		lipgloss.Center, lipgloss.Center,
 		content,
 	)
 }
 
 func (m model) renderDashboard() string {
-	// Logo
-	logoView := logoStyle.Render(logo)
+	// Stats cards
+	policyCard := m.renderStatCard("POLICIES", fmt.Sprintf("%d", len(m.policies)), m.selectedIndex == 0)
+	agentCard := m.renderStatCard("AGENTS", fmt.Sprintf("%d", len(m.agents)), m.selectedIndex == 1)
 
-	// Tagline
-	tagline := subtitleStyle.Render("sudo for AI agents")
-
-	// Stats row
-	policyCount := fmt.Sprintf("%d", len(m.policies))
-	agentCount := fmt.Sprintf("%d", len(m.agents))
-
-	statsBox := lipgloss.JoinHorizontal(
-		lipgloss.Center,
-		panelStyle.Width(20).Align(lipgloss.Center).Render(
-			lipgloss.JoinVertical(lipgloss.Center,
-				accentStyle.Render(policyCount),
-				mutedStyle.Render("policies"),
-			),
-		),
-		"  ",
-		panelStyle.Width(20).Align(lipgloss.Center).Render(
-			lipgloss.JoinVertical(lipgloss.Center,
-				accentStyle.Render(agentCount),
-				mutedStyle.Render("agents"),
-			),
-		),
-	)
-
-	// Quick actions
-	actions := lipgloss.JoinHorizontal(
-		lipgloss.Center,
-		keyStyle.Render("a")+" add   ",
-		keyStyle.Render("1")+" policies   ",
-		keyStyle.Render("2")+" agents   ",
-		keyStyle.Render("i")+" init   ",
-		keyStyle.Render("s")+" sync   ",
-		keyStyle.Render("?")+" help   ",
-		keyStyle.Render("q")+" quit",
-	)
+	cards := lipgloss.JoinHorizontal(lipgloss.Top, policyCard, "  ", agentCard)
 
 	// Message
 	var msgView string
 	if m.message != "" {
-		var style lipgloss.Style
+		icon := "●"
+		style := mutedStyle
 		switch m.messageType {
 		case "success":
 			style = successStyle
 		case "error":
 			style = errorStyle
-		default:
-			style = mutedStyle
+			icon = "✗"
 		}
-		msgView = "\n" + style.Render("• "+m.message)
+		msgView = "\n\n" + style.Render(icon+" "+m.message)
 	}
 
-	// Compose
+	// Quick actions
+	actions := m.renderQuickActions()
+
 	return lipgloss.JoinVertical(
 		lipgloss.Center,
-		logoView,
-		"",
-		tagline,
-		mutedStyle.Render("v"+version),
-		"",
-		statsBox,
+		cards,
 		msgView,
-		"",
+		"\n",
 		actions,
 	)
 }
 
+func (m model) renderStatCard(title, value string, selected bool) string {
+	style := panelStyle.Width(24).Align(lipgloss.Center)
+	if selected {
+		style = panelActiveStyle.Width(24).Align(lipgloss.Center)
+	}
+
+	titleView := mutedStyle.Render(title)
+	valueView := orangeStyle.Copy().Bold(true).Render(value)
+
+	return style.Render(
+		lipgloss.JoinVertical(lipgloss.Center, titleView, valueView),
+	)
+}
+
+func (m model) renderQuickActions() string {
+	actions := []struct{ key, desc string }{
+		{"a", "add"},
+		{"i", "init"},
+		{"s", "sync"},
+		{"?", "help"},
+		{"q", "quit"},
+	}
+
+	if m.updateAvail != "" {
+		actions = append([]struct{ key, desc string }{{"u", "update"}}, actions...)
+	}
+
+	var parts []string
+	for _, a := range actions {
+		parts = append(parts, keyStyle.Render(a.key)+" "+keyDescStyle.Render(a.desc))
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Center, strings.Join(parts, "   "))
+}
+
 func (m model) renderPolicies() string {
-	title := titleStyle.Render("Policies")
+	width := min(60, m.width-4)
 
 	if len(m.policies) == 0 {
-		empty := lipgloss.JoinVertical(
+		content := lipgloss.JoinVertical(
 			lipgloss.Center,
-			"",
 			mutedStyle.Render("No policies yet"),
 			"",
-			mutedStyle.Render("Press "+keyStyle.Render("a")+" to add one"),
-			"",
+			mutedStyle.Render("Press ")+keyStyle.Render("a")+mutedStyle.Render(" to add one"),
 		)
-		return activePanelStyle.Width(50).Render(
-			lipgloss.JoinVertical(lipgloss.Left, title, empty, m.renderPolicyHelp()),
+		return panelActiveStyle.Width(width).Render(
+			lipgloss.JoinVertical(lipgloss.Left,
+				panelHeaderStyle.Render("Policies"),
+				"",
+				content,
+			),
 		)
 	}
 
 	var rows []string
 	for i, p := range m.policies {
 		prefix := "  "
-		style := baseStyle.Foreground(t.secondary)
+		style := itemStyle
 
-		if i == m.selectedPolicy {
-			prefix = accentStyle.Render("▸ ")
-			style = selectedStyle
+		if i == m.selectedIndex {
+			prefix = orangeStyle.Render("▸ ")
+			style = itemSelectedStyle
 		}
 
-		// Show builtin indicator
-		indicator := ""
+		// Builtin indicator
+		suffix := ""
 		if builtin.Find(p) != nil {
-			indicator = mutedStyle.Render(" ⚡")
+			suffix = " " + tagStyle.Render("⚡")
 		}
 
-		rows = append(rows, prefix+style.Render(p)+indicator)
+		rows = append(rows, prefix+style.Render(p)+suffix)
 	}
 
-	list := strings.Join(rows, "\n")
+	help := mutedStyle.Render("↑↓ navigate • a add • d delete • esc back")
 
-	return activePanelStyle.Width(60).Render(
+	return panelActiveStyle.Width(width).Render(
 		lipgloss.JoinVertical(lipgloss.Left,
-			title,
+			panelHeaderStyle.Render("Policies"),
 			"",
-			list,
+			strings.Join(rows, "\n"),
 			"",
-			m.renderPolicyHelp(),
+			help,
 		),
 	)
 }
 
-func (m model) renderPolicyHelp() string {
-	return helpKeyStyle.Render(
-		keyStyle.Render("↑↓") + " navigate  " +
-			keyStyle.Render("a") + " add  " +
-			keyStyle.Render("d") + " delete  " +
-			keyStyle.Render("esc") + " back",
-	)
-}
-
 func (m model) renderAgents() string {
-	title := titleStyle.Render("Agents")
+	width := min(50, m.width-4)
 
 	if len(m.agents) == 0 {
-		empty := lipgloss.JoinVertical(
+		content := lipgloss.JoinVertical(
 			lipgloss.Center,
-			"",
 			mutedStyle.Render("No agents detected"),
 			"",
 			mutedStyle.Render("Install Claude Code, Cursor, or OpenCode"),
-			"",
 		)
-		return activePanelStyle.Width(50).Render(
-			lipgloss.JoinVertical(lipgloss.Left, title, empty, m.renderAgentHelp()),
+		return panelActiveStyle.Width(width).Render(
+			lipgloss.JoinVertical(lipgloss.Left,
+				panelHeaderStyle.Render("Agents"),
+				"",
+				content,
+			),
 		)
 	}
 
 	var rows []string
 	for i, a := range m.agents {
 		prefix := "  "
-		style := baseStyle.Foreground(t.secondary)
+		style := itemStyle
 
-		if i == m.selectedAgent {
-			prefix = accentStyle.Render("▸ ")
-			style = selectedStyle
+		if i == m.selectedIndex {
+			prefix = orangeStyle.Render("▸ ")
+			style = itemSelectedStyle
 		}
 
 		status := successStyle.Render("●")
 		rows = append(rows, prefix+style.Render(a.Name)+" "+status)
 	}
 
-	list := strings.Join(rows, "\n")
+	help := mutedStyle.Render("↑↓ navigate • enter sync • esc back")
 
-	return activePanelStyle.Width(50).Render(
+	return panelActiveStyle.Width(width).Render(
 		lipgloss.JoinVertical(lipgloss.Left,
-			title,
+			panelHeaderStyle.Render("Agents"),
 			"",
-			list,
+			strings.Join(rows, "\n"),
 			"",
-			m.renderAgentHelp(),
+			help,
 		),
 	)
 }
 
-func (m model) renderAgentHelp() string {
-	return helpKeyStyle.Render(
-		keyStyle.Render("↑↓") + " navigate  " +
-			keyStyle.Render("enter") + " sync  " +
-			keyStyle.Render("esc") + " back",
-	)
-}
-
 func (m model) renderAddPolicy() string {
-	title := titleStyle.Render("Add Policy")
+	width := min(55, m.width-4)
 
 	examples := mutedStyle.Render(`Examples:
   no lodash
-  protect .env files
+  protect .env files  
   prefer pnpm over npm
   don't delete tests`)
 
-	return activePanelStyle.Width(50).Render(
+	return panelActiveStyle.Width(width).Render(
 		lipgloss.JoinVertical(lipgloss.Left,
-			title,
+			panelHeaderStyle.Render("Add Policy"),
 			"",
-			"What should be restricted?",
+			"Describe what should be restricted:",
 			"",
-			m.textInput.View(),
+			m.input.View(),
 			"",
 			examples,
 			"",
-			helpKeyStyle.Render(keyStyle.Render("enter")+" add  "+keyStyle.Render("esc")+" cancel"),
+			mutedStyle.Render("enter add • esc cancel"),
 		),
 	)
 }
 
 func (m model) renderCompiling() string {
-	return panelStyle.Width(40).Align(lipgloss.Center).Render(
+	return panelStyle.Width(35).Align(lipgloss.Center).Render(
 		lipgloss.JoinVertical(lipgloss.Center,
 			"",
 			m.spinner.View()+" Compiling...",
@@ -605,73 +796,135 @@ func (m model) renderCompiling() string {
 }
 
 func (m model) renderHelp() string {
-	title := titleStyle.Render("Keyboard Shortcuts")
+	width := min(50, m.width-4)
 
-	shortcuts := `
-  Navigation
-  ` + keyStyle.Render("1") + ` / ` + keyStyle.Render("p") + `     Policies
-  ` + keyStyle.Render("2") + ` / ` + keyStyle.Render("g") + `     Agents
-  ` + keyStyle.Render("esc") + `         Back / Dashboard
-  ` + keyStyle.Render("?") + `           Toggle help
-  ` + keyStyle.Render("q") + `           Quit
+	help := `
+  ` + orangeStyle.Render("NAVIGATION") + `
+  ` + keyStyle.Render("↑/k") + `  ` + keyDescStyle.Render("Move up") + `
+  ` + keyStyle.Render("↓/j") + `  ` + keyDescStyle.Render("Move down") + `
+  ` + keyStyle.Render("tab") + `  ` + keyDescStyle.Render("Switch panels") + `
+  ` + keyStyle.Render("esc") + `  ` + keyDescStyle.Render("Back / Dashboard") + `
+  ` + keyStyle.Render("?") + `    ` + keyDescStyle.Render("Toggle help") + `
 
-  Actions
-  ` + keyStyle.Render("a") + `           Add policy
-  ` + keyStyle.Render("i") + `           Initialize .leash
-  ` + keyStyle.Render("s") + `           Sync to all agents
-  ` + keyStyle.Render("d") + `           Delete selected
+  ` + orangeStyle.Render("ACTIONS") + `
+  ` + keyStyle.Render("a") + `    ` + keyDescStyle.Render("Add policy") + `
+  ` + keyStyle.Render("d/x") + `  ` + keyDescStyle.Render("Delete selected") + `
+  ` + keyStyle.Render("i") + `    ` + keyDescStyle.Render("Initialize .leash") + `
+  ` + keyStyle.Render("s") + `    ` + keyDescStyle.Render("Sync to all agents") + `
+  ` + keyStyle.Render("r") + `    ` + keyDescStyle.Render("Refresh") + `
+  ` + keyStyle.Render("q") + `    ` + keyDescStyle.Render("Quit") + `
 
-  List Navigation
-  ` + keyStyle.Render("j") + ` / ` + keyStyle.Render("↓") + `      Move down
-  ` + keyStyle.Render("k") + ` / ` + keyStyle.Render("↑") + `      Move up
-  ` + keyStyle.Render("enter") + `       Select / Confirm`
+  ` + orangeStyle.Render("CLI") + `
+  ` + dimStyle.Render("leash add \"policy\"") + `
+  ` + dimStyle.Render("leash sync") + `
+  ` + dimStyle.Render("leash --help")
 
-	cli := mutedStyle.Render(`
-  CLI: leash add "policy"
-       leash sync
-       leash --help`)
-
-	return activePanelStyle.Width(45).Render(
+	return panelActiveStyle.Width(width).Render(
 		lipgloss.JoinVertical(lipgloss.Left,
-			title,
-			shortcuts,
-			"",
-			cli,
-			"",
-			helpKeyStyle.Render(keyStyle.Render("esc")+" close"),
+			panelHeaderStyle.Render("Keyboard Shortcuts"),
+			help,
 		),
 	)
 }
 
-// Messages
+func (m model) renderWelcome() string {
+	width := min(55, m.width-4)
+
+	welcomeText := `
+Welcome to ` + orangeStyle.Render("VETO") + ` - sudo for AI agents.
+
+Detected ` + orangeStyle.Render(fmt.Sprintf("%d", len(m.agents))) + ` AI agents on your system:
+`
+
+	for _, a := range m.agents {
+		welcomeText += "  " + successStyle.Render("●") + " " + a.Name + "\n"
+	}
+
+	welcomeText += `
+VETO lets you set policies that your AI agents
+must follow - like "no lodash" or "protect .env".
+
+Would you like to create a .leash config file
+with recommended defaults?
+`
+
+	return lipgloss.Place(
+		m.width, m.height,
+		lipgloss.Center, lipgloss.Center,
+		panelActiveStyle.Width(width).Render(
+			lipgloss.JoinVertical(lipgloss.Left,
+				panelHeaderStyle.Render("Welcome"),
+				welcomeText,
+				keyStyle.Render("y/enter")+" yes   "+keyStyle.Render("n/esc")+" no",
+			),
+		),
+	)
+}
+
+func (m model) renderStatusBar() string {
+	left := mutedStyle.Render("leash")
+
+	var viewName string
+	switch m.view {
+	case viewDashboard:
+		viewName = "dashboard"
+	case viewPolicies:
+		viewName = "policies"
+	case viewAgents:
+		viewName = "agents"
+	case viewHelp:
+		viewName = "help"
+	case viewAddPolicy:
+		viewName = "add"
+	}
+
+	right := mutedStyle.Render(viewName)
+
+	gap := m.width - lipgloss.Width(left) - lipgloss.Width(right) - 2
+	if gap < 0 {
+		gap = 0
+	}
+
+	return statusBarStyle.Width(m.width).Render(
+		left + strings.Repeat(" ", gap) + right,
+	)
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COMMANDS & MESSAGES
+// ══════════════════════════════════════════════════════════════════════════════
+
 type policyCompiledMsg struct {
 	policy string
 	err    error
 }
 
-type initDoneMsg struct {
-	err error
-}
-
+type initDoneMsg struct{ err error }
 type syncDoneMsg struct {
 	count int
 	err   error
 }
+type policyDeletedMsg struct {
+	index int
+	err   error
+}
+type updateCheckMsg struct{ newVersion string }
+type updateDoneMsg struct{ err error }
+type agentSyncedMsg struct {
+	name string
+	err  error
+}
 
-// Commands
 func compilePolicy(policy string) tea.Cmd {
 	return func() tea.Msg {
-		// Check builtins first (instant)
 		if builtin.Find(policy) != nil {
 			return policyCompiledMsg{policy: policy}
 		}
-		// For now, accept all policies
-		// TODO: LLM compilation via engine bridge
 		return policyCompiledMsg{policy: policy}
 	}
 }
 
-func runInit(m *model) tea.Cmd {
+func runInit() tea.Cmd {
 	return func() tea.Msg {
 		if !config.Exists() {
 			if err := config.Create(); err != nil {
@@ -682,20 +935,88 @@ func runInit(m *model) tea.Cmd {
 	}
 }
 
-func runSync(m *model) tea.Cmd {
+func runSync() tea.Cmd {
 	return func() tea.Msg {
+		// Check if .leash exists
+		if !config.Exists() {
+			return syncDoneMsg{err: fmt.Errorf("no .leash file - run init first")}
+		}
+
 		agents := agent.DetectInstalled()
+		if len(agents) == 0 {
+			return syncDoneMsg{err: fmt.Errorf("no agents detected")}
+		}
+
 		count := 0
+		var lastErr error
 		for _, a := range agents {
-			if err := agent.Install(a.ID); err == nil {
+			if err := agent.Install(a.ID); err != nil {
+				lastErr = err
+			} else {
 				count++
 			}
 		}
+
+		// If nothing synced, report the error
+		if count == 0 && lastErr != nil {
+			return syncDoneMsg{err: lastErr}
+		}
+
 		return syncDoneMsg{count: count}
 	}
 }
 
+func syncAgent(id string) tea.Cmd {
+	return func() tea.Msg {
+		err := agent.Install(id)
+		if err == nil {
+			return syncDoneMsg{count: 1}
+		}
+		return syncDoneMsg{err: err}
+	}
+}
+
+func checkForUpdate() tea.Msg {
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get("https://registry.npmjs.org/veto-leash/latest")
+	if err != nil {
+		return updateCheckMsg{}
+	}
+	defer resp.Body.Close()
+
+	var data struct {
+		Version string `json:"version"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return updateCheckMsg{}
+	}
+
+	return updateCheckMsg{newVersion: data.Version}
+}
+
+func runUpdate() tea.Cmd {
+	return func() tea.Msg {
+		var cmd *exec.Cmd
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("npm", "install", "-g", "veto-leash@latest")
+		} else {
+			cmd = exec.Command("npm", "install", "-g", "veto-leash@latest")
+		}
+		err := cmd.Run()
+		return updateDoneMsg{err: err}
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // CLI
+// ══════════════════════════════════════════════════════════════════════════════
 
 func main() {
 	args := os.Args[1:]
@@ -713,7 +1034,7 @@ func main() {
 		return
 	}
 
-	// CLI commands
+	// CLI
 	switch args[0] {
 	case "--version", "-v":
 		fmt.Printf("leash v%s\n", version)
@@ -723,11 +1044,11 @@ func main() {
 
 	case "init":
 		if config.Exists() {
-			fmt.Println("• .leash already exists")
+			fmt.Println("● .leash already exists")
 			return
 		}
 		if err := config.Create(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Println("✓ Created .leash")
@@ -739,27 +1060,25 @@ func main() {
 		}
 		policy := strings.Join(args[1:], " ")
 
-		// Builtin = instant
 		if builtin.Find(policy) != nil {
 			if err := config.AddPolicy(policy); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 				os.Exit(1)
 			}
 			fmt.Printf("✓ Added: %s (builtin)\n", policy)
 			return
 		}
 
-		// LLM compilation
 		bridge, err := engine.NewBridge()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 			os.Exit(1)
 		}
 
 		fmt.Println("Compiling...")
 		result, err := bridge.Compile(policy)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 			os.Exit(1)
 		}
 
@@ -769,7 +1088,7 @@ func main() {
 		}
 
 		if err := config.AddPolicy(policy); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Printf("✓ Added: %s\n", policy)
@@ -782,7 +1101,7 @@ func main() {
 		path, _ := config.Find()
 		cfg, err := config.Load(path)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 			os.Exit(1)
 		}
 		if len(cfg.Policies) == 0 {
@@ -799,28 +1118,38 @@ func main() {
 
 	case "status":
 		agents := agent.DetectInstalled()
-		fmt.Printf("Agents: %d detected\n", len(agents))
+		fmt.Printf("Agents: %d\n", len(agents))
 		for _, a := range agents {
 			fmt.Printf("  ● %s\n", a.Name)
 		}
 		if config.Exists() {
 			path, _ := config.Find()
 			cfg, _ := config.Load(path)
-			fmt.Printf("\nPolicies: %d\n", len(cfg.Policies))
+			fmt.Printf("Policies: %d\n", len(cfg.Policies))
 		}
 
 	case "sync":
+		if !config.Exists() {
+			fmt.Fprintln(os.Stderr, "✗ No .leash file found")
+			fmt.Fprintln(os.Stderr, "  Run: leash init")
+			os.Exit(1)
+		}
 		agents := agent.DetectInstalled()
 		if len(agents) == 0 {
-			fmt.Println("No agents detected")
-			return
+			fmt.Fprintln(os.Stderr, "✗ No agents detected")
+			os.Exit(1)
 		}
+		synced := 0
 		for _, a := range agents {
 			if err := agent.Install(a.ID); err != nil {
 				fmt.Fprintf(os.Stderr, "✗ %s: %v\n", a.Name, err)
 			} else {
 				fmt.Printf("✓ %s\n", a.Name)
+				synced++
 			}
+		}
+		if synced == 0 {
+			os.Exit(1)
 		}
 
 	case "install":
@@ -829,7 +1158,7 @@ func main() {
 			os.Exit(1)
 		}
 		if err := agent.Install(args[1]); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Printf("✓ Installed: %s\n", args[1])
@@ -840,7 +1169,7 @@ func main() {
 			os.Exit(1)
 		}
 		if err := agent.Uninstall(args[1]); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Printf("✓ Uninstalled: %s\n", args[1])
@@ -852,55 +1181,63 @@ func main() {
 		}
 		bridge, err := engine.NewBridge()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 			os.Exit(1)
 		}
 		if err := bridge.Explain(strings.Join(args[1:], " ")); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 			os.Exit(1)
 		}
 
 	case "audit":
 		bridge, err := engine.NewBridge()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 			os.Exit(1)
 		}
 		if err := bridge.Audit(args[1:]); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 			os.Exit(1)
 		}
 
+	case "update":
+		fmt.Println("Updating...")
+		cmd := exec.Command("npm", "install", "-g", "veto-leash@latest")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("✓ Updated! Run 'leash --version' to verify")
+
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown: %s\n", args[0])
-		fmt.Fprintln(os.Stderr, "Run: leash --help")
+		fmt.Fprintf(os.Stderr, "Unknown: %s\nRun: leash --help\n", args[0])
 		os.Exit(1)
 	}
 }
 
 func printHelp() {
 	fmt.Print(`
-  ` + logoSmall + `
-  
-  sudo for AI agents
+ ` + logoCompact + `  sudo for AI agents
 
-USAGE
+` + orangeStyle.Render("USAGE") + `
   leash                     Dashboard (TUI)
   leash add "policy"        Add a policy
   leash list                List policies
-  leash sync                Sync to all agents
+  leash sync                Sync to all agents  
   leash status              Show status
   leash install <agent>     Install hooks
-  leash explain "policy"    Preview policy
+  leash update              Update to latest version
 
-AGENTS
+` + orangeStyle.Render("AGENTS") + `
   cc, claude-code    Claude Code
   oc, opencode       OpenCode
   cursor             Cursor
-  windsurf           Windsurf
+  windsurf           Windsurf  
   aider              Aider
 
-EXAMPLES
+` + orangeStyle.Render("EXAMPLES") + `
   leash add "no lodash"
   leash add "protect .env"
   leash sync

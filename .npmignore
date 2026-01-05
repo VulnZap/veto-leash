@@ -1,3 +1,7 @@
+# Local binaries - postinstall copies the right one from go/
+bin/leash
+bin/leash.exe
+
 # Source files (TypeScript)
 src/
 tsconfig.json
