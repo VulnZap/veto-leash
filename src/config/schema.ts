@@ -1,49 +1,49 @@
 // src/config/schema.ts
-// .leash file schema and validation
+// .veto file schema and validation
 
 import type { Policy } from '../types.js';
 
-export interface LeashConfig {
+export interface VetoConfig {
   version: 1;
   policies: string[];
-  settings?: LeashSettings;
-  cloud?: LeashCloudConfig;
+  settings?: VetoSettings;
+  cloud?: VetoCloudConfig;
 }
 
-export interface LeashSettings {
+export interface VetoSettings {
   fail_closed?: boolean;
   audit_log?: boolean;
   verbose?: boolean;
 }
 
-export interface LeashCloudConfig {
+export interface VetoCloudConfig {
   team_id?: string;
   sync?: boolean;
 }
 
-export interface CompiledLeashConfig {
+export interface CompiledVetoConfig {
   version: 1;
   policies: Array<{
     restriction: string;
     policy: Policy;
   }>;
-  settings: LeashSettings;
-  cloud?: LeashCloudConfig;
+  settings: VetoSettings;
+  cloud?: VetoCloudConfig;
 }
 
 /**
  * Default settings
  */
-export const DEFAULT_SETTINGS: LeashSettings = {
+export const DEFAULT_SETTINGS: VetoSettings = {
   fail_closed: true,
   audit_log: false,
   verbose: false,
 };
 
 /**
- * Validate a .leash config object
+ * Validate a .veto config object
  */
-export function validateConfig(config: unknown): config is LeashConfig {
+export function validateConfig(config: unknown): config is VetoConfig {
   if (typeof config !== 'object' || config === null) {
     return false;
   }
@@ -77,9 +77,9 @@ export function validateConfig(config: unknown): config is LeashConfig {
 }
 
 /**
- * Generate a default .leash config
+ * Generate a default .veto config
  */
-export function generateDefaultConfig(): LeashConfig {
+export function generateDefaultConfig(): VetoConfig {
   return {
     version: 1,
     policies: [
@@ -94,11 +94,11 @@ export function generateDefaultConfig(): LeashConfig {
 }
 
 /**
- * Generate YAML content for a .leash file
+ * Generate YAML content for a .veto file
  */
-export function generateLeashYaml(config: LeashConfig): string {
+export function generateVetoYaml(config: VetoConfig): string {
   const lines: string[] = [
-    '# .leash - Veto Leash project configuration',
+    '# .veto - Veto project configuration',
     '# Commit this file to version control',
     '',
     'version: 1',
@@ -125,7 +125,7 @@ export function generateLeashYaml(config: LeashConfig): string {
 
   if (config.cloud) {
     lines.push('');
-    lines.push('# Leash Cloud (coming soon)');
+    lines.push('# Veto Cloud (coming soon)');
     lines.push('# cloud:');
     lines.push('#   team_id: "team_xxx"');
     lines.push('#   sync: true');
@@ -136,7 +136,7 @@ export function generateLeashYaml(config: LeashConfig): string {
 }
 
 /**
- * Default policies for simple .leash format
+ * Default policies for simple .veto format
  * These are universal and work across all projects/languages
  */
 export const DEFAULT_SIMPLE_POLICIES = [
@@ -145,11 +145,11 @@ export const DEFAULT_SIMPLE_POLICIES = [
 ];
 
 /**
- * Generate simple plain-text .leash content
+ * Generate simple plain-text .veto content
  */
-export function generateSimpleLeash(policies: string[]): string {
+export function generateSimpleVeto(policies: string[]): string {
   return [
-    '# .leash - Policies for AI coding agents',
+    '# .veto - Policies for AI coding agents',
     '# One policy per line. Lines starting with # are comments.',
     '',
     ...policies,

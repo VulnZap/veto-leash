@@ -1,32 +1,32 @@
 // src/config/watcher.ts
-// Background file watcher for automatic .leash recompilation
+// Background file watcher for automatic .veto recompilation
 
 import { watch, FSWatcher } from 'chokidar';
 import { writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
-import { findLeashConfig, loadLeashConfig, compileLeashConfig } from './loader.js';
+import { findVetoConfig, loadVetoConfig, compileVetoConfig } from './loader.js';
 import { COLORS, SYMBOLS } from '../ui/colors.js';
 
 let watcher: FSWatcher | null = null;
 let isCompiling = false;
 
 /**
- * Compiled cache file path (sibling to .leash)
+ * Compiled cache file path (sibling to .veto)
  */
-function getCompiledPath(leashPath: string): string {
-  return join(dirname(leashPath), '.leash.compiled.json');
+function getCompiledPath(vetoPath: string): string {
+  return join(dirname(vetoPath), '.veto.compiled.json');
 }
 
 /**
- * Compile the .leash file and write to cache.
+ * Compile the .veto file and write to cache.
  * Called on file change and on initial startup.
  */
-async function recompile(leashPath: string): Promise<boolean> {
+async function recompile(vetoPath: string): Promise<boolean> {
   if (isCompiling) return false;
   isCompiling = true;
 
   try {
-    const config = loadLeashConfig(leashPath);
+    const config = loadVetoConfig(vetoPath);
     if (!config) {
       isCompiling = false;
       return false;
@@ -38,8 +38,8 @@ async function recompile(leashPath: string): Promise<boolean> {
       return true;
     }
 
-    const compiled = await compileLeashConfig(config);
-    const outPath = getCompiledPath(leashPath);
+    const compiled = await compileVetoConfig(config);
+    const outPath = getCompiledPath(vetoPath);
     writeFileSync(outPath, JSON.stringify(compiled, null, 2));
     
     console.log(`  ${COLORS.success}${SYMBOLS.success} Compiled ${compiled.policies.length} policies${COLORS.reset}`);
@@ -53,43 +53,43 @@ async function recompile(leashPath: string): Promise<boolean> {
 }
 
 /**
- * Start watching the .leash file for changes.
+ * Start watching the .veto file for changes.
  * Automatically recompiles on every save.
  */
-export async function startLeashWatcher(dir: string = process.cwd()): Promise<boolean> {
-  const leashPath = findLeashConfig(dir);
-  if (!leashPath) {
-    console.log(`${COLORS.warning}${SYMBOLS.warning} No .leash file found${COLORS.reset}`);
+export async function startVetoWatcher(dir: string = process.cwd()): Promise<boolean> {
+  const vetoPath = findVetoConfig(dir);
+  if (!vetoPath) {
+    console.log(`${COLORS.warning}${SYMBOLS.warning} No .veto file found${COLORS.reset}`);
     return false;
   }
 
-  console.log(`\n${COLORS.info}Watching ${leashPath} for changes...${COLORS.reset}`);
+  console.log(`\n${COLORS.info}Watching ${vetoPath} for changes...${COLORS.reset}`);
   
   // Initial compile
-  await recompile(leashPath);
+  await recompile(vetoPath);
 
   // Watch for changes
-  watcher = watch(leashPath, {
+  watcher = watch(vetoPath, {
     persistent: true,
     ignoreInitial: true,
   });
 
   watcher.on('change', async () => {
-    console.log(`\n${COLORS.dim}[${new Date().toLocaleTimeString()}] .leash changed${COLORS.reset}`);
-    await recompile(leashPath);
+    console.log(`\n${COLORS.dim}[${new Date().toLocaleTimeString()}] .veto changed${COLORS.reset}`);
+    await recompile(vetoPath);
   });
 
   watcher.on('unlink', () => {
-    console.log(`\n${COLORS.warning}${SYMBOLS.warning} .leash file deleted${COLORS.reset}`);
+    console.log(`\n${COLORS.warning}${SYMBOLS.warning} .veto file deleted${COLORS.reset}`);
   });
 
   return true;
 }
 
 /**
- * Stop watching the .leash file.
+ * Stop watching the .veto file.
  */
-export async function stopLeashWatcher(): Promise<void> {
+export async function stopVetoWatcher(): Promise<void> {
   if (watcher) {
     await watcher.close();
     watcher = null;
@@ -100,16 +100,16 @@ export async function stopLeashWatcher(): Promise<void> {
  * Check if compiled cache exists and is up-to-date.
  */
 export function hasCompiledCache(dir: string = process.cwd()): boolean {
-  const leashPath = findLeashConfig(dir);
-  if (!leashPath) return false;
-  return existsSync(getCompiledPath(leashPath));
+  const vetoPath = findVetoConfig(dir);
+  if (!vetoPath) return false;
+  return existsSync(getCompiledPath(vetoPath));
 }
 
 /**
- * Force recompile the .leash file.
+ * Force recompile the .veto file.
  */
 export async function forceRecompile(dir: string = process.cwd()): Promise<boolean> {
-  const leashPath = findLeashConfig(dir);
-  if (!leashPath) return false;
-  return recompile(leashPath);
+  const vetoPath = findVetoConfig(dir);
+  if (!vetoPath) return false;
+  return recompile(vetoPath);
 }

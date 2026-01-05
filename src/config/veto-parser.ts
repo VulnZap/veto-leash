@@ -1,8 +1,8 @@
-// src/config/leash-parser.ts
-// Simple plain-text .leash file parser
+// src/config/veto-parser.ts
+// Simple plain-text .veto file parser
 // Format: one policy per line, # for comments, ` - ` for optional reason
 
-export interface LeashPolicy {
+export interface VetoPolicy {
   raw: string;           // Original line: "no lodash - use native methods"
   restriction: string;   // The policy: "no lodash"
   reason?: string;       // Optional reason: "use native methods"
@@ -10,7 +10,7 @@ export interface LeashPolicy {
 }
 
 /**
- * Parse a simple .leash file into policies.
+ * Parse a simple .veto file into policies.
  * 
  * Format:
  *   # Comment lines start with #
@@ -18,7 +18,7 @@ export interface LeashPolicy {
  *   no any types - enforces strict TypeScript
  *   extend @acme/typescript-strict
  */
-export function parseLeashFile(content: string): LeashPolicy[] {
+export function parseVetoFile(content: string): VetoPolicy[] {
   return content
     .split('\n')
     .map(line => line.trim())
@@ -26,7 +26,7 @@ export function parseLeashFile(content: string): LeashPolicy[] {
     .map(parseLine);
 }
 
-function parseLine(line: string): LeashPolicy {
+function parseLine(line: string): VetoPolicy {
   // Handle extend directive
   if (line.startsWith('extend ')) {
     const target = line.slice(7).trim();
@@ -46,10 +46,10 @@ function parseLine(line: string): LeashPolicy {
 }
 
 /**
- * Detect if content is simple .leash format (not YAML).
+ * Detect if content is simple .veto format (not YAML).
  * YAML format has 'version:' or 'policies:' keys.
  */
-export function isSimpleLeashFormat(content: string): boolean {
+export function isSimpleVetoFormat(content: string): boolean {
   const trimmed = content.trim();
   
   // Empty file = simple format (will result in no policies)
@@ -69,9 +69,9 @@ export function isSimpleLeashFormat(content: string): boolean {
 }
 
 /**
- * Convert parsed policies to the internal LeashConfig format.
+ * Convert parsed policies to the internal VetoConfig format.
  */
-export function policiesToConfig(policies: LeashPolicy[]): { version: 1; policies: string[] } {
+export function policiesToConfig(policies: VetoPolicy[]): { version: 1; policies: string[] } {
   return {
     version: 1,
     policies: policies

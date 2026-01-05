@@ -20,11 +20,11 @@ import { startWatchdog, stopWatchdog } from './watchdog/index.js';
 import { runSync } from './commands/sync.js';
 
 import {
-  findLeashConfig,
-  loadLeashConfig,
-  compileLeashConfig,
-  createLeashConfig,
-  hasLeashConfig,
+  findVetoConfig,
+  loadVetoConfig,
+  compileVetoConfig,
+  createVetoConfig,
+  hasVetoConfig,
 } from './config/loader.js';
 import { printAuditLog, clearAuditLog } from './audit/index.js';
 import { runInteractiveInit } from './commands/init-interactive.js';
@@ -47,7 +47,7 @@ async function main() {
   }
 
   if (args.includes('--version') || args.includes('-v')) {
-    console.log(`veto-leash v${VERSION}`);
+    console.log(`veto v${VERSION}`);
     process.exit(0);
   }
 
@@ -109,8 +109,8 @@ async function runWrapper(agent: string, restriction: string) {
     console.error(
       `${COLORS.error}${SYMBOLS.error} Error: No restriction provided${COLORS.reset}\n`
     );
-    console.log('Usage: leash <agent> "<restriction>"\n');
-    console.log("Example: leash cc \"don't delete test files\"");
+    console.log('Usage: veto <agent> "<restriction>"\n');
+    console.log("Example: veto cc \"don't delete test files\"");
     process.exit(1);
   }
 
@@ -145,7 +145,7 @@ async function runWrapper(agent: string, restriction: string) {
 
   // Print startup message
   console.log(
-    `\n${COLORS.success}${SYMBOLS.success} veto-leash active${COLORS.reset}\n`
+    `\n${COLORS.success}${SYMBOLS.success} veto active${COLORS.reset}\n`
   );
   console.log(`  ${COLORS.dim}Policy:${COLORS.reset} ${policy.description}`);
   console.log(`  ${COLORS.dim}Action:${COLORS.reset} ${policy.action}\n`);
@@ -289,7 +289,7 @@ async function runExplain(restriction: string) {
   }
   
   console.log(`${COLORS.dim}Description:${COLORS.reset} ${policy.description}`);
-  console.log(`\nRun 'leash <agent> "${restriction}"' to enforce.\n`);
+  console.log(`\nRun 'veto <agent> "${restriction}"' to enforce.\n`);
 }
 
 async function runWatchdog(restriction: string) {
@@ -326,7 +326,7 @@ async function runWatchdog(restriction: string) {
 
   // Print startup message
   console.log(
-    `\n${COLORS.success}${SYMBOLS.success} veto-leash watchdog active${COLORS.reset}\n`
+    `\n${COLORS.success}${SYMBOLS.success} veto watchdog active${COLORS.reset}\n`
   );
   console.log(`  ${COLORS.dim}Policy:${COLORS.reset} ${policy.description}`);
   console.log(`  ${COLORS.dim}Action:${COLORS.reset} ${policy.action}`);
@@ -357,7 +357,7 @@ async function runWatchdog(restriction: string) {
 }
 
 function runStatus(): void {
-  console.log(`\n${COLORS.bold}veto-leash Status${COLORS.reset}`);
+  console.log(`\n${COLORS.bold}Veto Status${COLORS.reset}`);
   console.log('\u2550'.repeat(50) + '\n');
 
   const sessions = getActiveSessions();
@@ -432,8 +432,8 @@ async function runAdd(restrictions: string[]) {
     console.error(
       `${COLORS.error}${SYMBOLS.error} Error: No restriction provided${COLORS.reset}`
     );
-    console.log(`\nUsage: leash add "policy1" "policy2" ...`);
-    console.log(`Example: leash add "protect .env" "no console.log"`);
+    console.log(`\nUsage: veto add "policy1" "policy2" ...`);
+    console.log(`Example: veto add "protect .env" "no console.log"`);
     process.exit(1);
   }
 
@@ -502,9 +502,9 @@ async function runAdd(restrictions: string[]) {
 
   if (successful.length > 0) {
     console.log(`\nTo enforce, install for your agent:`);
-    console.log(`  ${COLORS.dim}leash install cc${COLORS.reset}        Claude Code`);
-    console.log(`  ${COLORS.dim}leash install windsurf${COLORS.reset}  Windsurf`);
-    console.log(`  ${COLORS.dim}leash install oc${COLORS.reset}        OpenCode\n`);
+    console.log(`  ${COLORS.dim}veto install cc${COLORS.reset}        Claude Code`);
+    console.log(`  ${COLORS.dim}veto install windsurf${COLORS.reset}  Windsurf`);
+    console.log(`  ${COLORS.dim}veto install oc${COLORS.reset}        OpenCode\n`);
   }
 }
 
@@ -515,8 +515,8 @@ function runList() {
 function runRemove(target: string) {
   if (!target.trim()) {
     console.error(`${COLORS.error}${SYMBOLS.error} Specify policy to remove${COLORS.reset}`);
-    console.log(`${COLORS.dim}Usage: leash remove <number> or leash remove "<name>"${COLORS.reset}`);
-    console.log(`${COLORS.dim}Run 'leash list' to see policies${COLORS.reset}`);
+    console.log(`${COLORS.dim}Usage: veto remove <number> or veto remove "<name>"${COLORS.reset}`);
+    console.log(`${COLORS.dim}Run 'veto list' to see policies${COLORS.reset}`);
     process.exit(1);
   }
   
@@ -561,22 +561,22 @@ function runClear() {
 
 function printHelp() {
   console.log(`
-${COLORS.bold}veto-leash${COLORS.reset} \u2014 sudo for AI agents
+${COLORS.bold}veto${COLORS.reset} \u2014 sudo for AI
 
 ${COLORS.bold}USAGE${COLORS.reset}
-  leash <agent> "<restriction>"     Wrap agent with policy enforcement
-  leash watch "<restriction>"       Background file protection (any agent)
-  leash explain "<restriction>"     Preview policy without installing
-  leash add "<restriction>"         Save policy for native install
-  leash init                        Create .leash config file
-  leash sync [agent]                Apply .leash policies to agents
-  leash install <agent>             Install native hooks/config
-  leash uninstall <agent>           Remove native hooks/config
-  leash list                        Show saved policies
-  leash remove <n|name>             Remove a policy by number or name
-  leash audit [--tail] [--clear]    View or clear audit log
-  leash status                      Show active sessions
-  leash clear                       Clear compilation cache
+  veto <agent> "<restriction>"     Wrap agent with policy enforcement
+  veto watch "<restriction>"       Background file protection (any agent)
+  veto explain "<restriction>"     Preview policy without installing
+  veto add "<restriction>"         Save policy for native install
+  veto init                        Create .veto config file
+  veto sync [agent]                Apply .veto policies to agents
+  veto install <agent>             Install native hooks/config
+  veto uninstall <agent>           Remove native hooks/config
+  veto list                        Show saved policies
+  veto remove <n|name>             Remove a policy by number or name
+  veto audit [--tail] [--clear]    View or clear audit log
+  veto status                      Show active sessions
+  veto clear                       Clear compilation cache
 
 ${COLORS.bold}AGENTS (native integration)${COLORS.reset}
   cc, claude-code    Claude Code     PreToolUse hooks
@@ -586,33 +586,33 @@ ${COLORS.bold}AGENTS (native integration)${COLORS.reset}
   aider              Aider           .aider.conf.yml read-only
 
 ${COLORS.bold}AGENTS (wrapper/watchdog)${COLORS.reset}
-  codex              Codex CLI       Use 'leash watch' (OS sandbox)
+  codex              Codex CLI       Use 'veto watch' (OS sandbox)
   copilot            GitHub Copilot  Use wrapper mode
   <any>              Any CLI tool    PATH-based interception
 
 ${COLORS.bold}EXAMPLES${COLORS.reset}
   ${COLORS.dim}# Quick start - wrapper mode${COLORS.reset}
-  leash cc "don't delete test files"
+  veto cc "don't delete test files"
   
   ${COLORS.dim}# Native mode - persistent policies${COLORS.reset}
-  leash add "don't delete test files"
-  leash add "protect .env"
-  leash install cc
-  leash install windsurf
+  veto add "don't delete test files"
+  veto add "protect .env"
+  veto install cc
+  veto install windsurf
   
   ${COLORS.dim}# Watchdog mode - catches everything${COLORS.reset}
-  leash watch "protect test files"
+  veto watch "protect test files"
   
   ${COLORS.dim}# Project config - team-wide policies${COLORS.reset}
-  leash init              # Creates .leash file
-  leash sync cc           # Compiles and installs
+  veto init              # Creates .veto file
+  veto sync cc           # Compiles and installs
 
 ${COLORS.bold}ENVIRONMENT${COLORS.reset}
   GEMINI_API_KEY     Required for custom restrictions (not builtins).
                      Free: https://aistudio.google.com/apikey
 
 ${COLORS.bold}MORE INFO${COLORS.reset}
-  https://github.com/VulnZap/veto-leash
+  https://github.com/VulnZap/veto
 `);
 }
 

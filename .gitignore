@@ -5,9 +5,10 @@ dist/
 .DS_Store
 
 # Go binaries
-/leash
-/go/leash-*
+/veto
+/go/veto
+/go/veto-*
 
-# Native binary in bin (leash.js is tracked)
-bin/leash
-bin/leash.exe
+# Native binary in bin (veto.js is tracked)
+bin/veto
+bin/veto.exe

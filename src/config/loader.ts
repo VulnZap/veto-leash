@@ -1,31 +1,31 @@
 // src/config/loader.ts
-// Load and parse .leash configuration files
+// Load and parse .veto configuration files
 
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { parse as parseYaml } from 'yaml';
 import {
   validateConfig,
-  generateSimpleLeash,
+  generateSimpleVeto,
   DEFAULT_SETTINGS,
   DEFAULT_SIMPLE_POLICIES,
-  type LeashConfig,
-  type CompiledLeashConfig,
+  type VetoConfig,
+  type CompiledVetoConfig,
 } from './schema.js';
 import { compile } from '../compiler/index.js';
 import { COLORS, SYMBOLS, createSpinner } from '../ui/colors.js';
-import { parseLeashFile, isSimpleLeashFormat, policiesToConfig } from './leash-parser.js';
+import { parseVetoFile, isSimpleVetoFormat, policiesToConfig } from './veto-parser.js';
 
-const LEASH_FILE = '.leash';
-const LEASH_YAML = '.leash.yaml';
-const LEASH_YML = '.leash.yml';
-const LEASH_JSON = '.leash.json';
+const VETO_FILE = '.veto';
+const VETO_YAML = '.veto.yaml';
+const VETO_YML = '.veto.yml';
+const VETO_JSON = '.veto.json';
 
 /**
- * Find .leash config file in current directory
+ * Find .veto config file in current directory
  */
-export function findLeashConfig(dir: string = process.cwd()): string | null {
-  const candidates = [LEASH_FILE, LEASH_YAML, LEASH_YML, LEASH_JSON];
+export function findVetoConfig(dir: string = process.cwd()): string | null {
+  const candidates = [VETO_FILE, VETO_YAML, VETO_YML, VETO_JSON];
   
   for (const name of candidates) {
     const path = join(dir, name);
@@ -38,10 +38,10 @@ export function findLeashConfig(dir: string = process.cwd()): string | null {
 }
 
 /**
- * Load and parse .leash config
+ * Load and parse .veto config
  * Supports both simple plain-text format and YAML format.
  */
-export function loadLeashConfig(path: string): LeashConfig | null {
+export function loadVetoConfig(path: string): VetoConfig | null {
   if (!existsSync(path)) {
     return null;
   }
@@ -53,38 +53,38 @@ export function loadLeashConfig(path: string): LeashConfig | null {
     if (path.endsWith('.json')) {
       const config = JSON.parse(content);
       if (!validateConfig(config)) {
-        console.error(`${COLORS.error}${SYMBOLS.error} Invalid .leash config${COLORS.reset}`);
+        console.error(`${COLORS.error}${SYMBOLS.error} Invalid .veto config${COLORS.reset}`);
         return null;
       }
       return config;
     }
     
     // Check for simple plain-text format (one rule per line)
-    if (isSimpleLeashFormat(content)) {
-      const policies = parseLeashFile(content);
+    if (isSimpleVetoFormat(content)) {
+      const policies = parseVetoFile(content);
       return policiesToConfig(policies);
     }
     
     // Fall back to YAML parsing
     const config = parseYaml(content);
     if (!validateConfig(config)) {
-      console.error(`${COLORS.error}${SYMBOLS.error} Invalid .leash config${COLORS.reset}`);
+      console.error(`${COLORS.error}${SYMBOLS.error} Invalid .veto config${COLORS.reset}`);
       return null;
     }
     return config;
   } catch (err) {
-    console.error(`${COLORS.error}${SYMBOLS.error} Failed to parse .leash: ${(err as Error).message}${COLORS.reset}`);
+    console.error(`${COLORS.error}${SYMBOLS.error} Failed to parse .veto: ${(err as Error).message}${COLORS.reset}`);
     return null;
   }
 }
 
 /**
- * Compile all policies in a .leash config (parallel for performance)
+ * Compile all policies in a .veto config (parallel for performance)
  */
-export async function compileLeashConfig(
-  config: LeashConfig
-): Promise<CompiledLeashConfig> {
-  const compiled: CompiledLeashConfig = {
+export async function compileVetoConfig(
+  config: VetoConfig
+): Promise<CompiledVetoConfig> {
+  const compiled: CompiledVetoConfig = {
     version: 1,
     policies: [],
     settings: { ...DEFAULT_SETTINGS, ...config.settings },
@@ -132,17 +132,17 @@ export async function compileLeashConfig(
 }
 
 /**
- * Create a new .leash config file (simple plain-text format)
+ * Create a new .veto config file (simple plain-text format)
  */
-export function createLeashConfig(dir: string = process.cwd()): string {
-  const path = join(dir, LEASH_FILE);
+export function createVetoConfig(dir: string = process.cwd()): string {
+  const path = join(dir, VETO_FILE);
   
   if (existsSync(path)) {
-    console.log(`${COLORS.warning}${SYMBOLS.warning} .leash already exists${COLORS.reset}`);
+    console.log(`${COLORS.warning}${SYMBOLS.warning} .veto already exists${COLORS.reset}`);
     return path;
   }
 
-  const content = generateSimpleLeash(DEFAULT_SIMPLE_POLICIES);
+  const content = generateSimpleVeto(DEFAULT_SIMPLE_POLICIES);
   
   writeFileSync(path, content);
   console.log(`${COLORS.success}${SYMBOLS.success} Created ${path}${COLORS.reset}`);
@@ -151,8 +151,8 @@ export function createLeashConfig(dir: string = process.cwd()): string {
 }
 
 /**
- * Check if current directory has a .leash config
+ * Check if current directory has a .veto config
  */
-export function hasLeashConfig(dir: string = process.cwd()): boolean {
-  return findLeashConfig(dir) !== null;
+export function hasVetoConfig(dir: string = process.cwd()): boolean {
+  return findVetoConfig(dir) !== null;
 }

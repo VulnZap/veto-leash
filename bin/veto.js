@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// bin/leash.js - Wrapper that uses native binary or falls back to Node.js
+// bin/veto.js - Wrapper that uses native binary or falls back to Node.js
 
 import { spawn } from 'child_process';
 import { existsSync } from 'fs';
@@ -11,8 +11,8 @@ const rootDir = join(__dirname, '..');
 
 // Try native binary first
 const nativeBinary = process.platform === 'win32' 
-  ? join(__dirname, 'leash.exe')
-  : join(__dirname, 'leash');
+  ? join(__dirname, 'veto.exe')
+  : join(__dirname, 'veto');
 
 if (existsSync(nativeBinary)) {
   // Use native binary
@@ -29,7 +29,7 @@ if (existsSync(nativeBinary)) {
   const nodeCLI = join(rootDir, 'dist', 'cli.js');
   
   if (!existsSync(nodeCLI)) {
-    console.error('leash: Neither native binary nor Node.js CLI found.');
+    console.error('veto: Neither native binary nor Node.js CLI found.');
     console.error('Run "pnpm build" to build the CLI.');
     process.exit(1);
   }

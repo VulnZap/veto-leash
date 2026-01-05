@@ -1,4 +1,4 @@
-module github.com/vulnzap/leash
+module github.com/VulnZap/veto
 
 go 1.24.0
 

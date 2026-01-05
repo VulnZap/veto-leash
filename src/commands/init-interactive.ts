@@ -6,14 +6,14 @@ import {
   type AgentInfo as Agent
 } from '../native/index.js';
 import {
-  createLeashConfig,
-  hasLeashConfig,
+  createVetoConfig,
+  hasVetoConfig,
 } from '../config/loader.js';
 import { COLORS, SYMBOLS, createSpinner } from '../ui/colors.js';
 import { runSync } from './sync.js';
 
 export async function runInteractiveInit() {
-  console.log(`\n${COLORS.bold}Welcome to veto-leash initialization${COLORS.reset}\n`);
+  console.log(`\n${COLORS.bold}Welcome to Veto initialization${COLORS.reset}\n`);
 
   // 1. Detect Agents
   const installedAgents = detectInstalledAgents();
@@ -39,9 +39,9 @@ export async function runInteractiveInit() {
       min: 1
     },
     {
-      type: hasLeashConfig() ? null : 'confirm',
+      type: hasVetoConfig() ? null : 'confirm',
       name: 'createConfig',
-      message: 'No .leash configuration found. Create one with default rules?',
+      message: 'No .veto configuration found. Create one with default rules?',
       initial: true
     }
   ]);
@@ -54,10 +54,10 @@ export async function runInteractiveInit() {
   // 3. Create Config
   if (response.createConfig) {
     const spinner = createSpinner('Creating configuration...');
-    await createLeashConfig();
+    await createVetoConfig();
     spinner.stop();
-  } else if (!hasLeashConfig()) {
-     console.log(`\n${COLORS.warning}Skipping configuration creation. You will need a .leash file to enforce policies.${COLORS.reset}`);
+  } else if (!hasVetoConfig()) {
+     console.log(`\n${COLORS.warning}Skipping configuration creation. You will need a .veto file to enforce policies.${COLORS.reset}`);
   }
 
   // 4. Install Hooks
@@ -79,5 +79,5 @@ export async function runInteractiveInit() {
   await runSync();
 
   console.log(`\n${COLORS.success}${SYMBOLS.success} Setup complete! Policies are now enforced.${COLORS.reset}`);
-  console.log(`\nRun ${COLORS.bold}leash add "your policy"${COLORS.reset} to add new restrictions.`);
+  console.log(`\nRun ${COLORS.bold}veto add "your policy"${COLORS.reset} to add new restrictions.`);
 }

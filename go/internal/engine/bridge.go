@@ -53,7 +53,7 @@ func NewBridge() (*Bridge, error) {
 	candidates := []string{
 		filepath.Join(filepath.Dir(exePath), "dist"),
 		filepath.Join(filepath.Dir(exePath), "..", "dist"),
-		filepath.Join(filepath.Dir(exePath), "..", "lib", "node_modules", "veto-leash", "dist"),
+		filepath.Join(filepath.Dir(exePath), "..", "lib", "node_modules", "veto-cli", "dist"),
 		"dist", // Current directory
 	}
 

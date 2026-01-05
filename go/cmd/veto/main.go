@@ -1,5 +1,5 @@
-// leash - sudo for AI agents
-// A permission layer for AI coding assistants with native TUI.
+// veto - the permission layer for AI agents
+// sudo for AI coding assistants with native TUI.
 package main
 
 import (
@@ -12,17 +12,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/VulnZap/veto/internal/agent"
+	"github.com/VulnZap/veto/internal/builtin"
+	"github.com/VulnZap/veto/internal/config"
+	"github.com/VulnZap/veto/internal/engine"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/vulnzap/leash/internal/agent"
-	"github.com/vulnzap/leash/internal/builtin"
-	"github.com/vulnzap/leash/internal/config"
-	"github.com/vulnzap/leash/internal/engine"
 )
 
-const version = "2.1.2"
+const version = "3.0.0"
 
 // ══════════════════════════════════════════════════════════════════════════════
 // VETO BRANDING
@@ -404,7 +404,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.message = msg.err.Error()
 			m.messageType = "error"
 		} else {
-			m.message = "Initialized .leash"
+			m.message = "Initialized .veto"
 			m.messageType = "success"
 			// Reload
 			if path, _ := config.Find(); path != "" {
@@ -447,7 +447,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.message = "Update failed: " + msg.err.Error()
 			m.messageType = "error"
 		} else {
-			m.message = "Updated! Restart leash to use new version"
+			m.message = "Updated! Restart veto to use new version"
 			m.messageType = "success"
 			m.updateAvail = ""
 		}
@@ -825,15 +825,15 @@ func (m model) renderHelp() string {
   ` + orangeStyle.Render("ACTIONS") + `
   ` + keyStyle.Render("a") + `      ` + keyDescStyle.Render("Add policy") + `
   ` + keyStyle.Render("d/x") + `    ` + keyDescStyle.Render("Delete selected") + `
-  ` + keyStyle.Render("i") + `      ` + keyDescStyle.Render("Initialize .leash") + `
+  ` + keyStyle.Render("i") + `      ` + keyDescStyle.Render("Initialize .veto") + `
   ` + keyStyle.Render("s") + `      ` + keyDescStyle.Render("Sync to all agents") + `
   ` + keyStyle.Render("r") + `      ` + keyDescStyle.Render("Refresh") + `
   ` + keyStyle.Render("q") + `      ` + keyDescStyle.Render("Quit") + `
 
   ` + orangeStyle.Render("CLI") + `
-  ` + dimStyle.Render("leash add \"policy\"") + `
-  ` + dimStyle.Render("leash sync") + `
-  ` + dimStyle.Render("leash --help")
+  ` + dimStyle.Render("veto add \"policy\"") + `
+  ` + dimStyle.Render("veto sync") + `
+  ` + dimStyle.Render("veto --help")
 
 	return panelActiveStyle.Width(width).Render(
 		lipgloss.JoinVertical(lipgloss.Left,
@@ -860,7 +860,7 @@ Detected ` + orangeStyle.Render(fmt.Sprintf("%d", len(m.agents))) + ` AI agents 
 VETO lets you set policies that your AI agents
 must follow - like "no lodash" or "protect .env".
 
-Would you like to create a .leash config file
+Would you like to create a .veto config file
 with recommended defaults?
 `
 
@@ -878,7 +878,7 @@ with recommended defaults?
 }
 
 func (m model) renderStatusBar() string {
-	left := mutedStyle.Render("leash")
+	left := mutedStyle.Render("veto")
 
 	var viewName string
 	switch m.view {
@@ -953,9 +953,9 @@ func runInit() tea.Cmd {
 
 func runSync() tea.Cmd {
 	return func() tea.Msg {
-		// Check if .leash exists
+		// Check if .veto exists
 		if !config.Exists() {
-			return syncDoneMsg{err: fmt.Errorf("no .leash file - run init first")}
+			return syncDoneMsg{err: fmt.Errorf("no .veto file - run init first")}
 		}
 
 		agents := agent.DetectInstalled()
@@ -994,7 +994,7 @@ func syncAgent(id string) tea.Cmd {
 
 func checkForUpdate() tea.Msg {
 	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get("https://registry.npmjs.org/veto-leash/latest")
+	resp, err := client.Get("https://registry.npmjs.org/veto-cli/latest")
 	if err != nil {
 		return updateCheckMsg{}
 	}
@@ -1014,9 +1014,9 @@ func runUpdate() tea.Cmd {
 	return func() tea.Msg {
 		var cmd *exec.Cmd
 		if runtime.GOOS == "windows" {
-			cmd = exec.Command("npm", "install", "-g", "veto-leash@latest")
+			cmd = exec.Command("npm", "install", "-g", "veto-cli@latest")
 		} else {
-			cmd = exec.Command("npm", "install", "-g", "veto-leash@latest")
+			cmd = exec.Command("npm", "install", "-g", "veto-cli@latest")
 		}
 		err := cmd.Run()
 		return updateDoneMsg{err: err}
@@ -1053,25 +1053,25 @@ func main() {
 	// CLI
 	switch args[0] {
 	case "--version", "-v":
-		fmt.Printf("leash v%s\n", version)
+		fmt.Printf("veto v%s\n", version)
 
 	case "--help", "-h", "help":
 		printHelp()
 
 	case "init":
 		if config.Exists() {
-			fmt.Println("● .leash already exists")
+			fmt.Println("● .veto already exists")
 			return
 		}
 		if err := config.Create(); err != nil {
 			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println("✓ Created .leash")
+		fmt.Println("✓ Created .veto")
 
 	case "add":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "Usage: leash add \"policy\"")
+			fmt.Fprintln(os.Stderr, "Usage: veto add \"policy\"")
 			os.Exit(1)
 		}
 		policy := strings.Join(args[1:], " ")
@@ -1111,7 +1111,7 @@ func main() {
 
 	case "list":
 		if !config.Exists() {
-			fmt.Println("No .leash file. Run: leash init")
+			fmt.Println("No .veto file. Run: veto init")
 			return
 		}
 		path, _ := config.Find()
@@ -1146,8 +1146,8 @@ func main() {
 
 	case "sync":
 		if !config.Exists() {
-			fmt.Fprintln(os.Stderr, "✗ No .leash file found")
-			fmt.Fprintln(os.Stderr, "  Run: leash init")
+			fmt.Fprintln(os.Stderr, "✗ No .veto file found")
+			fmt.Fprintln(os.Stderr, "  Run: veto init")
 			os.Exit(1)
 		}
 		agents := agent.DetectInstalled()
@@ -1170,7 +1170,7 @@ func main() {
 
 	case "install":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "Usage: leash install <agent>")
+			fmt.Fprintln(os.Stderr, "Usage: veto install <agent>")
 			os.Exit(1)
 		}
 		if err := agent.Install(args[1]); err != nil {
@@ -1181,7 +1181,7 @@ func main() {
 
 	case "uninstall":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "Usage: leash uninstall <agent>")
+			fmt.Fprintln(os.Stderr, "Usage: veto uninstall <agent>")
 			os.Exit(1)
 		}
 		if err := agent.Uninstall(args[1]); err != nil {
@@ -1192,7 +1192,7 @@ func main() {
 
 	case "explain":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "Usage: leash explain \"policy\"")
+			fmt.Fprintln(os.Stderr, "Usage: veto explain \"policy\"")
 			os.Exit(1)
 		}
 		bridge, err := engine.NewBridge()
@@ -1218,33 +1218,33 @@ func main() {
 
 	case "update":
 		fmt.Println("Updating...")
-		cmd := exec.Command("npm", "install", "-g", "veto-leash@latest")
+		cmd := exec.Command("npm", "install", "-g", "veto-cli@latest")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
 			fmt.Fprintf(os.Stderr, "✗ %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println("✓ Updated! Run 'leash --version' to verify")
+		fmt.Println("✓ Updated! Run 'veto --version' to verify")
 
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown: %s\nRun: leash --help\n", args[0])
+		fmt.Fprintf(os.Stderr, "Unknown: %s\nRun: veto --help\n", args[0])
 		os.Exit(1)
 	}
 }
 
 func printHelp() {
 	fmt.Print(`
- ` + logoCompact + `  sudo for AI agents
+ ` + logoCompact + `  sudo for AI
 
 ` + orangeStyle.Render("USAGE") + `
-  leash                     Dashboard (TUI)
-  leash add "policy"        Add a policy
-  leash list                List policies
-  leash sync                Sync to all agents  
-  leash status              Show status
-  leash install <agent>     Install hooks
-  leash update              Update to latest version
+  veto                     Dashboard (TUI)
+  veto add "policy"        Add a policy
+  veto list                List policies
+  veto sync                Sync to all agents  
+  veto status              Show status
+  veto install <agent>     Install hooks
+  veto update              Update to latest version
 
 ` + orangeStyle.Render("AGENTS") + `
   cc, claude-code    Claude Code
@@ -1254,9 +1254,9 @@ func printHelp() {
   aider              Aider
 
 ` + orangeStyle.Render("EXAMPLES") + `
-  leash add "no lodash"
-  leash add "protect .env"
-  leash sync
+  veto add "no lodash"
+  veto add "protect .env"
+  veto sync
 
 `)
 }

@@ -6,12 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/vulnzap/leash/internal/builtin"
-	"github.com/vulnzap/leash/internal/config"
-	"github.com/vulnzap/leash/internal/policy"
+	"github.com/VulnZap/veto/internal/builtin"
+	"github.com/VulnZap/veto/internal/config"
+	"github.com/VulnZap/veto/internal/policy"
 )
 
-// Install installs leash hooks for an agent.
+// Install installs veto hooks for an agent.
 func Install(agentID string) error {
 	agent := Find(agentID)
 	if agent == nil {
@@ -34,7 +34,7 @@ func Install(agentID string) error {
 	}
 }
 
-// Uninstall removes leash hooks for an agent.
+// Uninstall removes veto hooks for an agent.
 func Uninstall(agentID string) error {
 	agent := Find(agentID)
 	if agent == nil {
@@ -51,7 +51,7 @@ func Uninstall(agentID string) error {
 	}
 }
 
-// loadPolicies loads and compiles policies from .leash config.
+// loadPolicies loads and compiles policies from .veto config.
 func loadPolicies() ([]*policy.Policy, error) {
 	if !config.Exists() {
 		return nil, nil
@@ -124,16 +124,16 @@ func installClaudeCode(agent *Agent) error {
 func uninstallClaudeCode(agent *Agent) error {
 	configDir := GetConfigDir(agent)
 
-	// Remove leash-generated files
+	// Remove veto-generated files
 	os.Remove(filepath.Join(configDir, "CLAUDE.md"))
 
 	return nil
 }
 
 func generateClaudeMD(policies []*policy.Policy) string {
-	md := `# Project Policies (managed by leash)
+	md := `# Project Policies (managed by veto)
 
-The following restrictions are enforced by veto-leash:
+The following restrictions are enforced by veto:
 
 `
 	for _, p := range policies {
@@ -241,7 +241,7 @@ func generateOpenCodeConfig(policies []*policy.Policy) map[string]interface{} {
 }
 
 func generateAgentsMD(policies []*policy.Policy) string {
-	md := `# AGENTS.md (managed by leash)
+	md := `# AGENTS.md (managed by veto)
 
 ## Enforced Policies
 
@@ -361,7 +361,7 @@ func installAider(agent *Agent) error {
 	}
 
 	// Simple YAML generation
-	content := "# Managed by leash\nread-only:\n"
+	content := "# Managed by veto\nread-only:\n"
 	for _, pattern := range readOnlyPatterns {
 		content += fmt.Sprintf("  - %s\n", pattern)
 	}

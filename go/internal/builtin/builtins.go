@@ -1,7 +1,7 @@
 // Package builtin provides predefined policies for common restrictions.
 package builtin
 
-import "github.com/vulnzap/leash/internal/policy"
+import "github.com/VulnZap/veto/internal/policy"
 
 // Builtin is a predefined policy template.
 type Builtin struct {

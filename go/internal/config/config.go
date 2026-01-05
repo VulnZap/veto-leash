@@ -1,4 +1,4 @@
-// Package config handles .leash configuration files.
+// Package config handles .veto configuration files.
 package config
 
 import (
@@ -8,21 +8,21 @@ import (
 	"strings"
 )
 
-// LeashConfig represents a .leash configuration file.
-type LeashConfig struct {
+// VetoConfig represents a .veto configuration file.
+type VetoConfig struct {
 	// Policies is a list of policy restrictions
 	Policies []string
 	// Agents to apply policies to (optional, defaults to all detected)
 	Agents []string
 }
 
-// DefaultPolicies are the universal defaults for new .leash files.
+// DefaultPolicies are the universal defaults for new .veto files.
 var DefaultPolicies = []string{
 	"protect .env",
 	"don't delete test files",
 }
 
-// Find locates a .leash file in the current directory or parents.
+// Find locates a .veto file in the current directory or parents.
 func Find() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -31,9 +31,9 @@ func Find() (string, error) {
 
 	dir := cwd
 	for {
-		leashPath := filepath.Join(dir, ".leash")
-		if _, err := os.Stat(leashPath); err == nil {
-			return leashPath, nil
+		vetoPath := filepath.Join(dir, ".veto")
+		if _, err := os.Stat(vetoPath); err == nil {
+			return vetoPath, nil
 		}
 
 		parent := filepath.Dir(dir)
@@ -47,15 +47,15 @@ func Find() (string, error) {
 	return "", os.ErrNotExist
 }
 
-// Exists checks if a .leash file exists in the current directory or parents.
+// Exists checks if a .veto file exists in the current directory or parents.
 func Exists() bool {
 	_, err := Find()
 	return err == nil
 }
 
-// Load reads and parses a .leash file.
+// Load reads and parses a .veto file.
 // Format: one policy per line, # for comments
-func Load(path string) (*LeashConfig, error) {
+func Load(path string) (*VetoConfig, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -83,42 +83,42 @@ func Load(path string) (*LeashConfig, error) {
 		return nil, err
 	}
 
-	return &LeashConfig{Policies: policies}, nil
+	return &VetoConfig{Policies: policies}, nil
 }
 
-// Create creates a new .leash file with default policies.
+// Create creates a new .veto file with default policies.
 func Create() error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
-	content := "# .leash - policies for AI agents\n"
+	content := "# .veto - policies for AI agents\n"
 	for _, p := range DefaultPolicies {
 		content += p + "\n"
 	}
 
-	return os.WriteFile(filepath.Join(cwd, ".leash"), []byte(content), 0644)
+	return os.WriteFile(filepath.Join(cwd, ".veto"), []byte(content), 0644)
 }
 
-// Save writes a config to the .leash file.
-func Save(config *LeashConfig) error {
+// Save writes a config to the .veto file.
+func Save(config *VetoConfig) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
-	content := "# .leash - policies for AI agents\n"
+	content := "# .veto - policies for AI agents\n"
 	for _, p := range config.Policies {
 		content += p + "\n"
 	}
 
-	return os.WriteFile(filepath.Join(cwd, ".leash"), []byte(content), 0644)
+	return os.WriteFile(filepath.Join(cwd, ".veto"), []byte(content), 0644)
 }
 
 // AddPolicy adds a policy to the config and saves it.
 func AddPolicy(policy string) error {
-	var config *LeashConfig
+	var config *VetoConfig
 
 	if Exists() {
 		path, _ := Find()
@@ -128,7 +128,7 @@ func AddPolicy(policy string) error {
 			return err
 		}
 	} else {
-		config = &LeashConfig{Policies: []string{}}
+		config = &VetoConfig{Policies: []string{}}
 	}
 
 	// Check if policy already exists

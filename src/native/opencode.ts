@@ -19,8 +19,8 @@ const OPENCODE_GLOBAL_CONFIG = join(
 );
 const OPENCODE_PROJECT_CONFIG = 'opencode.json';
 const OPENCODE_PLUGIN_DIR = join(homedir(), '.config', 'opencode', 'plugin');
-const VETO_LEASH_CONFIG_DIR = join(homedir(), '.config', 'veto-leash');
-const POLICIES_FILE = join(VETO_LEASH_CONFIG_DIR, 'policies.json');
+const VETO_CONFIG_DIR = join(homedir(), '.config', 'veto');
+const POLICIES_FILE = join(VETO_CONFIG_DIR, 'policies.json');
 
 interface OpenCodeConfig {
   $schema?: string;
@@ -465,7 +465,7 @@ export function savePolicy(restriction: string, policy: Policy): void {
     stored.policies.push({ restriction, policy });
   }
 
-  mkdirSync(VETO_LEASH_CONFIG_DIR, { recursive: true });
+  mkdirSync(VETO_CONFIG_DIR, { recursive: true });
   writeFileSync(POLICIES_FILE, JSON.stringify(stored, null, 2));
 }
 

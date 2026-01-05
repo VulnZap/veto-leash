@@ -1,16 +1,16 @@
 {
-  "name": "veto-leash",
-  "version": "2.1.2",
-  "description": "Semantic permissions for AI coding agents — sudo for AI agents",
+  "name": "veto-cli",
+  "version": "3.0.0",
+  "description": "The permission layer for AI agents — sudo for AI",
   "main": "./dist/cli.js",
   "bin": {
-    "leash": "./bin/leash.js"
+    "veto": "./bin/veto.js"
   },
   "type": "module",
   "files": [
     "dist",
     "bin",
-    "go/leash-*",
+    "go/veto-*",
     "scripts/postinstall.js"
   ],
   "scripts": {
@@ -58,13 +58,15 @@
     "security",
     "claude",
     "opencode",
+    "cursor",
+    "windsurf",
     "veto",
-    "leash"
+    "cli"
   ],
   "author": "Plaw, Inc.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/VulnZap/veto-leash"
+    "url": "https://github.com/VulnZap/veto"
   }
 }

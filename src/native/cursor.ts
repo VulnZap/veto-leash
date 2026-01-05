@@ -24,8 +24,8 @@ const CURSOR_CONFIG_DIR = join(homedir(), '.cursor');
 const CURSOR_HOOKS_FILE = join(CURSOR_CONFIG_DIR, 'hooks.json');
 const CURSOR_CLI_CONFIG = join(CURSOR_CONFIG_DIR, 'cli-config.json');
 const CURSOR_HOOKS_DIR = join(CURSOR_CONFIG_DIR, 'hooks', 'veto-leash');
-const VETO_LEASH_CONFIG_DIR = join(homedir(), '.config', 'veto-leash');
-const POLICIES_FILE = join(VETO_LEASH_CONFIG_DIR, 'policies.json');
+const VETO_CONFIG_DIR = join(homedir(), '.config', 'veto');
+const POLICIES_FILE = join(VETO_CONFIG_DIR, 'policies.json');
 
 // Also support project-level hooks
 const PROJECT_CURSOR_DIR = '.cursor';

@@ -1,4 +1,4 @@
-// Package policy defines core domain types for veto-leash policies.
+// Package policy defines core domain types for veto policies.
 package policy
 
 // Action represents what type of operation a policy applies to.

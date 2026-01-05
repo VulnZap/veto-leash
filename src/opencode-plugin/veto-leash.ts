@@ -52,8 +52,8 @@ interface Policy {
 }
 
 // Policy storage locations
-const VETO_LEASH_CONFIG_DIR = join(homedir(), ".config", "veto-leash")
-const POLICIES_FILE = join(VETO_LEASH_CONFIG_DIR, "policies.json")
+const VETO_CONFIG_DIR = join(homedir(), ".config", "veto")
+const POLICIES_FILE = join(VETO_CONFIG_DIR, "policies.json")
 
 // Load policies from veto-leash config
 function loadPolicies(): Policy[] {

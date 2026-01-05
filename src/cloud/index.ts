@@ -7,12 +7,12 @@ import { join } from 'path';
 import { homedir } from 'os';
 import { COLORS, SYMBOLS } from '../ui/colors.js';
 
-const CONFIG_DIR = join(homedir(), '.config', 'veto-leash');
+const CONFIG_DIR = join(homedir(), '.config', 'veto');
 const CLOUD_CONFIG = join(CONFIG_DIR, 'cloud.json');
 
 // Environment variables for cloud configuration
-const CLOUD_URL = process.env.LEASH_CLOUD_URL || 'https://api.leash.cloud';
-const CLOUD_API_KEY = process.env.LEASH_API_KEY;
+const CLOUD_URL = process.env.VETO_CLOUD_URL || 'https://api.veto.run';
+const CLOUD_API_KEY = process.env.VETO_API_KEY;
 
 export interface CloudConfig {
   authenticated: boolean;
@@ -58,38 +58,38 @@ export function saveCloudConfig(config: CloudConfig): void {
 }
 
 /**
- * Authenticate with Leash Cloud (stub)
+ * Authenticate with Veto Cloud (stub)
  */
 export async function login(): Promise<boolean> {
-  console.log(`\n${COLORS.info}Leash Cloud${COLORS.reset}\n`);
+  console.log(`\n${COLORS.info}Veto Cloud${COLORS.reset}\n`);
   console.log(`${COLORS.warning}${SYMBOLS.warning} Cloud integration coming soon!${COLORS.reset}\n`);
-  console.log(`Leash Cloud will provide:`);
+  console.log(`Veto Cloud will provide:`);
   console.log(`  ${COLORS.dim}${SYMBOLS.bullet}${COLORS.reset} Team-wide policy sync`);
   console.log(`  ${COLORS.dim}${SYMBOLS.bullet}${COLORS.reset} Centralized audit logs`);
   console.log(`  ${COLORS.dim}${SYMBOLS.bullet}${COLORS.reset} LLM credits for compilation`);
   console.log(`  ${COLORS.dim}${SYMBOLS.bullet}${COLORS.reset} Policy analytics\n`);
-  console.log(`Join the waitlist: ${COLORS.info}https://leash.cloud${COLORS.reset}\n`);
+  console.log(`Join the waitlist: ${COLORS.info}https://veto.run${COLORS.reset}\n`);
   
   return false;
 }
 
 /**
- * Sync policies with Leash Cloud (stub)
+ * Sync policies with Veto Cloud (stub)
  */
 export async function syncPolicies(): Promise<boolean> {
   if (!isAuthenticated()) {
-    console.log(`${COLORS.warning}${SYMBOLS.warning} Not authenticated. Run: leash login${COLORS.reset}`);
+    console.log(`${COLORS.warning}${SYMBOLS.warning} Not authenticated. Run: veto login${COLORS.reset}`);
     return false;
   }
   
-  console.log(`${COLORS.info}Syncing policies with Leash Cloud...${COLORS.reset}`);
+  console.log(`${COLORS.info}Syncing policies with Veto Cloud...${COLORS.reset}`);
   console.log(`${COLORS.warning}${SYMBOLS.warning} Cloud sync coming soon!${COLORS.reset}\n`);
   
   return false;
 }
 
 /**
- * Upload audit log to Leash Cloud (stub)
+ * Upload audit log to Veto Cloud (stub)
  */
 export async function uploadAuditLog(): Promise<boolean> {
   if (!isAuthenticated()) {
@@ -101,7 +101,7 @@ export async function uploadAuditLog(): Promise<boolean> {
 }
 
 /**
- * Download team policies from Leash Cloud (stub)
+ * Download team policies from Veto Cloud (stub)
  */
 export async function downloadTeamPolicies(): Promise<string[]> {
   if (!isAuthenticated()) {
@@ -118,7 +118,7 @@ export async function downloadTeamPolicies(): Promise<string[]> {
 export function printCloudStatus(): void {
   const config = loadCloudConfig();
   
-  console.log(`\n${COLORS.bold}Leash Cloud Status${COLORS.reset}`);
+  console.log(`\n${COLORS.bold}Veto Cloud Status${COLORS.reset}`);
   console.log('\u2550'.repeat(20) + '\n');
   
   if (config.authenticated && config.email) {
@@ -132,7 +132,7 @@ export function printCloudStatus(): void {
     }
   } else {
     console.log(`  ${COLORS.dim}Not authenticated${COLORS.reset}`);
-    console.log(`\n  Run: ${COLORS.info}leash login${COLORS.reset}`);
+    console.log(`\n  Run: ${COLORS.info}veto login${COLORS.reset}`);
   }
   
   console.log('');

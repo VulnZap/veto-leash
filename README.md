@@ -1,10 +1,10 @@
 <p align="center">
-  <h1 align="center">veto-leash</h1>
-  <p align="center"><strong>Permission layer for AI coding agents</strong></p>
+  <h1 align="center">veto</h1>
+  <p align="center"><strong>The permission layer for AI agents</strong></p>
   <p align="center">
-    <a href="https://www.npmjs.com/package/veto-leash"><img src="https://img.shields.io/npm/v/veto-leash?style=flat-square&color=f5a524" alt="npm version"></a>
-    <a href="https://github.com/VulnZap/veto-leash/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/veto-leash?style=flat-square&color=000" alt="License"></a>
-    <a href="https://www.npmjs.com/package/veto-leash"><img src="https://img.shields.io/npm/dm/veto-leash?style=flat-square&color=000" alt="Downloads"></a>
+    <a href="https://www.npmjs.com/package/veto-cli"><img src="https://img.shields.io/npm/v/veto-cli?style=flat-square&color=f5a524" alt="npm version"></a>
+    <a href="https://github.com/VulnZap/veto/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/veto-cli?style=flat-square&color=000" alt="License"></a>
+    <a href="https://www.npmjs.com/package/veto-cli"><img src="https://img.shields.io/npm/dm/veto-cli?style=flat-square&color=000" alt="Downloads"></a>
   </p>
 </p>
 
@@ -12,11 +12,11 @@
 
 ## Overview
 
-AI coding agents have unrestricted access to your codebase. veto-leash adds a permission layer with natural language policies enforced through AST-level validation.
+AI coding agents have unrestricted access to your codebase. Veto adds a permission layer with natural language policies enforced through AST-level validation.
 
 ```bash
-npm install -g veto-leash
-leash
+npm install -g veto-cli
+veto
 ```
 
 Create policies in plain English. Block dangerous operations. Zero false positives.
@@ -38,9 +38,9 @@ Traditional regex-based blocking creates false positives. Comments mentioning "l
 
 ## The Solution
 
-veto-leash uses Abstract Syntax Tree parsing for surgical precision:
+Veto uses Abstract Syntax Tree parsing for surgical precision:
 
-| Code                     | Regex Blocker | veto-leash            |
+| Code                     | Regex Blocker | Veto                  |
 | ------------------------ | ------------- | --------------------- |
 | `// import lodash`       | BLOCKED       | ALLOWED (comment)     |
 | `"use any type"`         | BLOCKED       | ALLOWED (string)      |
@@ -56,12 +56,12 @@ The difference is precision. AST parsing understands code structure, eliminating
 ### Installation
 
 ```bash
-npm install -g veto-leash
+npm install -g veto-cli
 ```
 
 ### Create Policies
 
-One policy per line in `.leash`:
+One policy per line in `.veto`:
 
 ```
 no lodash
@@ -73,7 +73,7 @@ protect .env files
 ### Launch Dashboard
 
 ```bash
-leash
+veto
 ```
 
 Interactive TUI for policy management, agent configuration, and monitoring.
@@ -81,10 +81,10 @@ Interactive TUI for policy management, agent configuration, and monitoring.
 ### CLI Usage
 
 ```bash
-leash init              # Auto-detect agents, install hooks
-leash add "no axios"    # Add policy
-leash sync              # Apply to all agents
-leash status            # Show configuration
+veto init              # Auto-detect agents, install hooks
+veto add "no axios"    # Add policy
+veto sync              # Apply to all agents
+veto status            # Show configuration
 ```
 
 <br>
@@ -143,7 +143,7 @@ Over 50 patterns available. See source for complete list.
 
 ```
 ┌──────────────────────────────────────────────┐
-│           leash (Native Binary)              │
+│           veto (Native Binary)               │
 ├──────────────────────────────────────────────┤
 │  Interactive TUI    │  CLI Commands          │
 │  • Policy editor    │  • add, list, sync     │
@@ -194,7 +194,7 @@ BLOCK with context and suggestion
 
 ## Configuration
 
-### .leash Format
+### .veto Format
 
 ```
 # Lines starting with # are comments
@@ -222,17 +222,17 @@ Built-in policies work without API key.
 
 ```
 USAGE
-  leash                     Interactive dashboard
-  leash init                Setup wizard
-  leash add "policy"        Add enforcement rule
-  leash list                Show active policies
-  leash sync [agent]        Apply to agents
-  leash install <agent>     Install agent hooks
-  leash uninstall <agent>   Remove hooks
-  leash status              Show configuration
-  leash explain "policy"    Preview rule behavior
-  leash audit [--tail]      View enforcement log
-  leash update              Update to latest version
+  veto                     Interactive dashboard
+  veto init                Setup wizard
+  veto add "policy"        Add enforcement rule
+  veto list                Show active policies
+  veto sync [agent]        Apply to agents
+  veto install <agent>     Install agent hooks
+  veto uninstall <agent>   Remove hooks
+  veto status              Show configuration
+  veto explain "policy"    Preview rule behavior
+  veto audit [--tail]      View enforcement log
+  veto update              Update to latest version
 
 AGENTS
   cc, claude-code    Claude Code
@@ -249,8 +249,8 @@ AGENTS
 ### Build from Source
 
 ```bash
-git clone https://github.com/VulnZap/veto-leash
-cd veto-leash
+git clone https://github.com/VulnZap/veto
+cd veto
 pnpm install
 pnpm build
 cd go && make build-all
@@ -288,7 +288,7 @@ go test ./...          # Go tests
 
 ## Comparison
 
-| Feature          | veto-leash   | git hooks | IDE linters |
+| Feature          | Veto         | git hooks | IDE linters |
 | ---------------- | ------------ | --------- | ----------- |
 | AST validation   | Yes          | No        | Limited     |
 | Natural language | Yes          | No        | No          |
@@ -310,5 +310,5 @@ See [LICENSE](LICENSE) for details.
 ---
 
 <p align="center">
-  Built by <a href="https://plaw.io">Plaw, Inc.</a> for the <a href="https://veto.run">Veto</a> product line.
+  Built by <a href="https://plaw.io">Plaw, Inc.</a> for <a href="https://veto.run">veto.run</a>
 </p>

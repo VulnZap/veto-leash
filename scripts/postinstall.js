@@ -15,11 +15,11 @@ const arch = process.arch;
 
 // Map to Go binary names
 const binaryMap = {
-  'darwin-arm64': 'leash-darwin-arm64',
-  'darwin-x64': 'leash-darwin-amd64',
-  'linux-x64': 'leash-linux-amd64',
-  'linux-arm64': 'leash-linux-arm64',
-  'win32-x64': 'leash-windows-amd64.exe',
+  'darwin-arm64': 'veto-darwin-arm64',
+  'darwin-x64': 'veto-darwin-amd64',
+  'linux-x64': 'veto-linux-amd64',
+  'linux-arm64': 'veto-linux-arm64',
+  'win32-x64': 'veto-windows-amd64.exe',
 };
 
 const key = `${platform}-${arch}`;
@@ -32,7 +32,7 @@ if (!binaryName) {
 }
 
 const sourcePath = join(rootDir, 'go', binaryName);
-const destPath = join(binDir, platform === 'win32' ? 'leash.exe' : 'leash');
+const destPath = join(binDir, platform === 'win32' ? 'veto.exe' : 'veto');
 
 // Check if Go binary exists
 if (!existsSync(sourcePath)) {
@@ -50,7 +50,7 @@ if (!existsSync(binDir)) {
 try {
   copyFileSync(sourcePath, destPath);
   chmodSync(destPath, 0o755);
-  console.log(`Installed native leash binary for ${platform}-${arch}`);
+  console.log(`Installed native veto binary for ${platform}-${arch}`);
 } catch (err) {
   console.error(`Failed to install binary: ${err.message}`);
   console.log('Falling back to Node.js CLI.');
