@@ -1,13 +1,10 @@
 {
-  "name": "veto",
-  "version": "0.1.0",
+  "name": "veto-sdk",
+  "version": "1.0.0",
   "description": "A guardrail system that intercepts and validates AI agent tool calls",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
-  "bin": {
-    "veto": "./dist/cli/bin.js"
-  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
