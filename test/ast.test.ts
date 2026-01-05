@@ -437,6 +437,288 @@ describe('Additional AST Rules', () => {
   });
 });
 
+// Additional language support - load parsers if available
+let pythonAvailable = false;
+let goAvailable = false;
+let rustAvailable = false;
+let javaAvailable = false;
+
+try {
+  await loadLanguage('python');
+  pythonAvailable = true;
+} catch {}
+
+try {
+  await loadLanguage('go');
+  goAvailable = true;
+} catch {}
+
+try {
+  await loadLanguage('rust');
+  rustAvailable = true;
+} catch {}
+
+try {
+  await loadLanguage('java');
+  javaAvailable = true;
+} catch {}
+
+describe('Multi-Language AST Support', () => {
+  const makePolicy = (description: string): Policy => ({
+    action: 'modify',
+    include: ['**/*'],
+    exclude: [],
+    description,
+  });
+
+  describe('Python', () => {
+    it('detects Python files', () => {
+      expect(detectLanguage('script.py')).toBe('python');
+      expect(detectLanguage('module.pyw')).toBe('python');
+      expect(detectLanguage('types.pyi')).toBe('python');
+    });
+
+    it.skipIf(!pythonAvailable)('blocks print statements', async () => {
+      const content = `print("Hello, World!")`;
+      const result = await checkContentAST(content, 'test.py', makePolicy('no python print'));
+
+      expect(result.allowed).toBe(false);
+      expect(result.method).toBe('ast');
+      expect(result.match?.reason).toContain('logging');
+    });
+
+    it.skipIf(!pythonAvailable)('blocks eval()', async () => {
+      const content = `result = eval("1 + 2")`;
+      const result = await checkContentAST(content, 'test.py', makePolicy('no python eval'));
+
+      expect(result.allowed).toBe(false);
+      expect(result.method).toBe('ast');
+    });
+
+    it.skipIf(!pythonAvailable)('blocks exec()', async () => {
+      const content = `exec("import os")`;
+      const result = await checkContentAST(content, 'test.py', makePolicy('no python eval'));
+
+      expect(result.allowed).toBe(false);
+    });
+
+    it.skipIf(!pythonAvailable)('blocks requests import', async () => {
+      const content = `import requests`;
+      const result = await checkContentAST(content, 'test.py', makePolicy('no requests'));
+
+      expect(result.allowed).toBe(false);
+      expect(result.match?.reason).toContain('httpx');
+    });
+
+    it.skipIf(!pythonAvailable)('blocks from requests import', async () => {
+      const content = `from requests import get`;
+      const result = await checkContentAST(content, 'test.py', makePolicy('no requests'));
+
+      expect(result.allowed).toBe(false);
+    });
+
+    it.skipIf(!pythonAvailable)('blocks pandas import', async () => {
+      const content = `import pandas as pd`;
+      const result = await checkContentAST(content, 'test.py', makePolicy('no pandas'));
+
+      expect(result.allowed).toBe(false);
+      expect(result.match?.reason).toContain('polars');
+    });
+
+    it.skipIf(!pythonAvailable)('allows httpx import', async () => {
+      const content = `import httpx`;
+      const result = await checkContentAST(content, 'test.py', makePolicy('no requests'));
+
+      expect(result.allowed).toBe(true);
+    });
+
+    it.skipIf(!pythonAvailable)('ignores print in strings', async () => {
+      const content = `message = "print this later"`;
+      const result = await checkContentAST(content, 'test.py', makePolicy('no python print'));
+
+      expect(result.allowed).toBe(true);
+    });
+
+    it.skipIf(!pythonAvailable)('ignores print in comments', async () => {
+      const content = `# print("debug")\nx = 1`;
+      const result = await checkContentAST(content, 'test.py', makePolicy('no python print'));
+
+      expect(result.allowed).toBe(true);
+    });
+  });
+
+  describe('Go', () => {
+    it('detects Go files', () => {
+      expect(detectLanguage('main.go')).toBe('go');
+    });
+
+    it.skipIf(!goAvailable)('blocks fmt.Println', async () => {
+      const content = `package main
+import "fmt"
+func main() { fmt.Println("Hello") }`;
+      const result = await checkContentAST(content, 'main.go', makePolicy('no go fmt print'));
+
+      expect(result.allowed).toBe(false);
+      expect(result.method).toBe('ast');
+      expect(result.match?.reason).toContain('structured logging');
+    });
+
+    it.skipIf(!goAvailable)('blocks fmt.Printf', async () => {
+      const content = `package main
+import "fmt"
+func main() { fmt.Printf("Hello %s", "World") }`;
+      const result = await checkContentAST(content, 'main.go', makePolicy('no go fmt print'));
+
+      expect(result.allowed).toBe(false);
+    });
+
+    it.skipIf(!goAvailable)('blocks panic()', async () => {
+      const content = `package main
+func main() { panic("something went wrong") }`;
+      const result = await checkContentAST(content, 'main.go', makePolicy('no go panic'));
+
+      expect(result.allowed).toBe(false);
+      expect(result.match?.reason).toContain('errors');
+    });
+
+    it.skipIf(!goAvailable)('allows log.Println', async () => {
+      const content = `package main
+import "log"
+func main() { log.Println("Hello") }`;
+      const result = await checkContentAST(content, 'main.go', makePolicy('no go fmt print'));
+
+      expect(result.allowed).toBe(true);
+    });
+  });
+
+  describe('Rust', () => {
+    it('detects Rust files', () => {
+      expect(detectLanguage('main.rs')).toBe('rust');
+      expect(detectLanguage('lib.rs')).toBe('rust');
+    });
+
+    it.skipIf(!rustAvailable)('blocks println! macro', async () => {
+      const content = `fn main() { println!("Hello, World!"); }`;
+      const result = await checkContentAST(content, 'main.rs', makePolicy('no rust println'));
+
+      expect(result.allowed).toBe(false);
+      expect(result.method).toBe('ast');
+      expect(result.match?.reason).toContain('tracing');
+    });
+
+    it.skipIf(!rustAvailable)('blocks dbg! macro', async () => {
+      const content = `fn main() { dbg!(x); }`;
+      const result = await checkContentAST(content, 'main.rs', makePolicy('no rust println'));
+
+      expect(result.allowed).toBe(false);
+    });
+
+    it.skipIf(!rustAvailable)('blocks .unwrap()', async () => {
+      const content = `fn main() { let x = Some(1).unwrap(); }`;
+      const result = await checkContentAST(content, 'main.rs', makePolicy('no rust unwrap'));
+
+      expect(result.allowed).toBe(false);
+      expect(result.match?.reason).toContain('?');
+    });
+
+    it.skipIf(!rustAvailable)('blocks unsafe blocks', async () => {
+      const content = `fn main() { unsafe { std::ptr::null::<i32>(); } }`;
+      const result = await checkContentAST(content, 'main.rs', makePolicy('no rust unsafe'));
+
+      expect(result.allowed).toBe(false);
+    });
+
+    it.skipIf(!rustAvailable)('allows ? operator', async () => {
+      const content = `fn main() -> Result<(), Error> { let x = some_fn()?; Ok(()) }`;
+      const result = await checkContentAST(content, 'main.rs', makePolicy('no rust unwrap'));
+
+      expect(result.allowed).toBe(true);
+    });
+  });
+
+  describe('Java', () => {
+    it('detects Java files', () => {
+      expect(detectLanguage('Main.java')).toBe('java');
+    });
+
+    it.skipIf(!javaAvailable)('blocks System.out.println', async () => {
+      const content = `public class Main { public static void main(String[] args) { System.out.println("Hello"); } }`;
+      const result = await checkContentAST(content, 'Main.java', makePolicy('no java sout'));
+
+      expect(result.allowed).toBe(false);
+      expect(result.method).toBe('ast');
+      expect(result.match?.reason).toContain('logging');
+    });
+
+    it.skipIf(!javaAvailable)('blocks System.out.print', async () => {
+      const content = `public class Main { public static void main(String[] args) { System.out.print("Hello"); } }`;
+      const result = await checkContentAST(content, 'Main.java', makePolicy('no java sout'));
+
+      expect(result.allowed).toBe(false);
+    });
+
+    it.skipIf(!javaAvailable)('allows Logger.info', async () => {
+      const content = `public class Main { void foo() { logger.info("Hello"); } }`;
+      const result = await checkContentAST(content, 'Main.java', makePolicy('no java sout'));
+
+      expect(result.allowed).toBe(true);
+    });
+  });
+
+  describe('C/C++', () => {
+    it('detects C files', () => {
+      expect(detectLanguage('main.c')).toBe('c');
+      expect(detectLanguage('header.h')).toBe('c');
+    });
+
+    it('detects C++ files', () => {
+      expect(detectLanguage('main.cpp')).toBe('cpp');
+      expect(detectLanguage('main.cc')).toBe('cpp');
+      expect(detectLanguage('header.hpp')).toBe('cpp');
+    });
+  });
+});
+
+describe('Cross-Language Security Patterns', () => {
+  const makePolicy = (description: string): Policy => ({
+    action: 'modify',
+    include: ['**/*'],
+    exclude: [],
+    description,
+  });
+
+  it.skipIf(!treeSitterAvailable)('blocks hardcoded secrets in JS', async () => {
+    // Use lowercase to match tree-sitter query (case-sensitive)
+    const content = `const api_key = "sk-1234567890abcdef";`;
+    const result = await checkContentAST(content, 'config.ts', makePolicy('no hardcoded secrets'));
+
+    expect(result.allowed).toBe(false);
+    expect(result.match?.reason).toContain('secrets');
+  });
+
+  it.skipIf(!treeSitterAvailable)('blocks secret variable in JS', async () => {
+    const content = `const secret = "my-secret-value";`;
+    const result = await checkContentAST(content, 'config.ts', makePolicy('no hardcoded secrets'));
+
+    expect(result.allowed).toBe(false);
+  });
+
+  it.skipIf(!pythonAvailable)('blocks hardcoded secrets in Python', async () => {
+    const content = `api_key = "sk-1234567890abcdef"`;
+    const result = await checkContentAST(content, 'config.py', makePolicy('no hardcoded secrets'));
+
+    expect(result.allowed).toBe(false);
+  });
+
+  it.skipIf(!treeSitterAvailable)('blocks SQL injection patterns', async () => {
+    const content = 'db.query(`SELECT * FROM users WHERE id = ${userId}`);';
+    const result = await checkContentAST(content, 'db.ts', makePolicy('no sql injection'));
+
+    expect(result.allowed).toBe(false);
+    expect(result.match?.reason).toContain('SQL');
+  });
+});
+
 describe('Performance', () => {
   it('regex pre-filter skips AST for non-matches', async () => {
     const content = `

@@ -1,16 +1,35 @@
 // src/native/windsurf.ts
 // Windsurf native hook integration (Cascade Hooks)
 // Very similar to Claude Code - supports pre_write_code, pre_run_command hooks
+// Enhanced with AST-based content validation for file operations.
 
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
-import { join } from 'path';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, copyFileSync, readdirSync } from 'fs';
+import { join, dirname } from 'path';
 import { homedir } from 'os';
+import { fileURLToPath } from 'url';
 import type { Policy } from '../types.js';
 import { COLORS, SYMBOLS } from '../ui/colors.js';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const WINDSURF_USER_CONFIG = join(homedir(), '.codeium', 'windsurf', 'hooks.json');
 const WINDSURF_WORKSPACE_CONFIG = '.windsurf/hooks.json';
 const VETO_SCRIPTS_DIR = join(homedir(), '.codeium', 'windsurf', 'veto-leash');
+
+/**
+ * Copy a directory recursively
+ */
+function copyDirSync(src: string, dest: string): void {
+  mkdirSync(dest, { recursive: true });
+  for (const entry of readdirSync(src, { withFileTypes: true })) {
+    const srcPath = join(src, entry.name);
+    const destPath = join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      copyFileSync(srcPath, destPath);
+    }
+  }
+}
 
 interface WindsurfHooksConfig {
   hooks?: {
@@ -22,20 +41,65 @@ interface WindsurfHooksConfig {
 }
 
 /**
- * Install veto-leash as Windsurf Cascade hooks
+ * Install veto-leash as Windsurf Cascade hooks with AST support
  */
 export async function installWindsurfHooks(
   target: 'user' | 'workspace' = 'user'
 ): Promise<void> {
   console.log(`\n${COLORS.info}Installing veto-leash for Windsurf (${target})...${COLORS.reset}\n`);
 
-  // Create scripts directory and validator
+  // Create scripts directory
   mkdirSync(VETO_SCRIPTS_DIR, { recursive: true });
   mkdirSync(join(VETO_SCRIPTS_DIR, 'policies'), { recursive: true });
 
-  const validatorPath = join(VETO_SCRIPTS_DIR, 'validator.py');
-  writeFileSync(validatorPath, VALIDATOR_SCRIPT, { mode: 0o755 });
-  console.log(`  ${COLORS.success}${SYMBOLS.success}${COLORS.reset} Created validator: ${validatorPath}`);
+  // Create package.json for ES modules support
+  writeFileSync(
+    join(VETO_SCRIPTS_DIR, 'package.json'),
+    JSON.stringify({ type: 'module' }, null, 2)
+  );
+
+  // Copy the Node.js validator and its dependencies
+  const distDir = dirname(__dirname);
+  const validatorSrc = join(distDir, 'native', 'validator.js');
+  const validatorDest = join(VETO_SCRIPTS_DIR, 'validator.js');
+  
+  // Copy AST modules
+  const astSrcDir = join(distDir, 'ast');
+  const astDestDir = join(VETO_SCRIPTS_DIR, 'ast');
+  const typesSrc = join(distDir, 'types.js');
+  const typesDest = join(VETO_SCRIPTS_DIR, 'types.js');
+  
+  // Copy WASM files for tree-sitter
+  const wasmSrcDir = join(dirname(distDir), 'languages');
+  const wasmDestDir = join(VETO_SCRIPTS_DIR, 'languages');
+  
+  let useNodeValidator = false;
+  let validatorPath: string;
+
+  try {
+    copyFileSync(validatorSrc, validatorDest);
+    console.log(`  ${COLORS.success}${SYMBOLS.success}${COLORS.reset} Created validator: ${validatorDest}`);
+    
+    copyDirSync(astSrcDir, astDestDir);
+    console.log(`  ${COLORS.success}${SYMBOLS.success}${COLORS.reset} Copied AST modules`);
+    
+    copyFileSync(typesSrc, typesDest);
+    
+    if (existsSync(wasmSrcDir)) {
+      copyDirSync(wasmSrcDir, wasmDestDir);
+      console.log(`  ${COLORS.success}${SYMBOLS.success}${COLORS.reset} Copied language parsers`);
+    }
+    
+    useNodeValidator = true;
+    validatorPath = validatorDest;
+  } catch (err) {
+    console.log(`  ${COLORS.warning}${SYMBOLS.warning}${COLORS.reset} Could not copy validator files: ${(err as Error).message}`);
+    console.log(`  ${COLORS.dim}Falling back to Python validator${COLORS.reset}`);
+    // Fall back to Python validator
+    validatorPath = join(VETO_SCRIPTS_DIR, 'validator.py');
+    writeFileSync(validatorPath, VALIDATOR_SCRIPT, { mode: 0o755 });
+    console.log(`  ${COLORS.success}${SYMBOLS.success}${COLORS.reset} Created validator: ${validatorPath}`);
+  }
 
   // Determine config path
   const configPath = target === 'user' ? WINDSURF_USER_CONFIG : WINDSURF_WORKSPACE_CONFIG;
@@ -56,7 +120,9 @@ export async function installWindsurfHooks(
   if (!config.hooks) config.hooks = {};
 
   // Add veto-leash hooks
-  const hookCommand = `python3 "${validatorPath}"`;
+  const hookCommand = useNodeValidator
+    ? `node "${validatorPath}"`
+    : `python3 "${validatorPath}"`;
 
   // Helper to add hook if not exists
   const addHook = (hookName: string) => {

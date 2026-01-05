@@ -81,22 +81,22 @@ const POLICY_SCHEMA = {
     },
     astRules: {
       type: Type.ARRAY,
-      description: 'Optional AST-based rules for precise code pattern matching (TypeScript/JavaScript only)',
+      description: 'AST-based rules for precise code pattern matching. ALWAYS prefer this over contentRules.',
       items: {
         type: Type.OBJECT,
         properties: {
           id: {
             type: Type.STRING,
-            description: 'Unique identifier for this rule (e.g., "no-lodash-import")',
+            description: 'Unique kebab-case identifier (e.g., "no-lodash-import", "no-console-log")',
           },
           query: {
             type: Type.STRING,
-            description: 'Tree-sitter S-expression query (e.g., "(import_statement source: (string) @s (#match? @s \\"lodash\\"))")',
+            description: 'Tree-sitter S-expression query. Use templates from prompt.',
           },
           languages: {
             type: Type.ARRAY,
             items: { type: Type.STRING },
-            description: 'Languages this rule applies to: ["typescript", "javascript"]',
+            description: 'Languages: typescript, javascript, python, go, rust, java, c, cpp, ruby, php, bash, kotlin',
           },
           reason: {
             type: Type.STRING,
@@ -104,14 +104,14 @@ const POLICY_SCHEMA = {
           },
           suggest: {
             type: Type.STRING,
-            description: 'Optional suggestion for alternative',
+            description: 'Suggestion for alternative approach',
           },
           regexPreFilter: {
             type: Type.STRING,
-            description: 'Fast pre-filter string - if content does not contain this, skip AST parsing',
+            description: 'Simple substring for fast pre-filtering. REQUIRED. E.g., "lodash", "console", "print"',
           },
         },
-        required: ['id', 'query', 'languages', 'reason'],
+        required: ['id', 'query', 'languages', 'reason', 'regexPreFilter'],
       },
     },
   },

@@ -2,6 +2,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import * as os from 'os';
 
 // Type definitions for tree-sitter (defined locally to avoid import issues)
 export interface Language {
@@ -66,8 +67,11 @@ const languages = new Map<LanguageType, Language>();
 const parsers = new Map<LanguageType, any>();
 const treeCache = new Map<string, { tree: Tree; hash: string }>();
 
+// Cache directory for downloaded WASM files
+const WASM_CACHE_DIR = path.join(os.homedir(), '.cache', 'veto-leash', 'languages');
+
 // Language WASM file URLs - tree-sitter grammars compiled to WASM
-// Using tree-sitter's official WASM releases where available
+// These are downloaded on-demand and cached locally
 const LANGUAGE_WASM_URLS: Partial<Record<LanguageType, string>> = {
   // JavaScript ecosystem
   typescript: 'https://github.com/AdeAttwood/tree-sitter-typescript-wasm/releases/download/0.23.0/tree-sitter-typescript.wasm',
@@ -85,7 +89,11 @@ const LANGUAGE_WASM_URLS: Partial<Record<LanguageType, string>> = {
   cpp: 'https://github.com/AdeAttwood/tree-sitter-cpp-wasm/releases/download/0.23.0/tree-sitter-cpp.wasm',
   // JVM
   java: 'https://github.com/AdeAttwood/tree-sitter-java-wasm/releases/download/0.23.0/tree-sitter-java.wasm',
-  // Note: kotlin, ruby, php, bash WASMs need to be built or found
+  kotlin: 'https://github.com/AdeAttwood/tree-sitter-kotlin-wasm/releases/download/0.1.0/tree-sitter-kotlin.wasm',
+  // Scripting
+  ruby: 'https://github.com/AdeAttwood/tree-sitter-ruby-wasm/releases/download/0.23.0/tree-sitter-ruby.wasm',
+  php: 'https://github.com/AdeAttwood/tree-sitter-php-wasm/releases/download/0.23.0/tree-sitter-php.wasm',
+  bash: 'https://github.com/AdeAttwood/tree-sitter-bash-wasm/releases/download/0.23.0/tree-sitter-bash.wasm',
 };
 
 /**
@@ -164,7 +172,40 @@ export function isInitialized(): boolean {
 }
 
 /**
- * Load a language from a WASM file
+ * Download a WASM file from URL and cache it locally
+ */
+async function downloadWasmFile(url: string, destPath: string): Promise<void> {
+  // Ensure cache directory exists
+  const dir = path.dirname(destPath);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  // Download with fetch
+  const response = await fetch(url, {
+    redirect: 'follow',
+    headers: { 'Accept': 'application/octet-stream' },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to download ${url}: ${response.status} ${response.statusText}`);
+  }
+
+  const buffer = await response.arrayBuffer();
+  fs.writeFileSync(destPath, Buffer.from(buffer));
+}
+
+/**
+ * Get the cached WASM file path
+ */
+function getCachedWasmPath(languageType: LanguageType): string {
+  const wasmFile = getWasmFileName(languageType);
+  return path.join(WASM_CACHE_DIR, wasmFile);
+}
+
+/**
+ * Load a language from a WASM file.
+ * Downloads on first use and caches locally for subsequent uses.
  */
 export async function loadLanguage(languageType: LanguageType): Promise<Language> {
   if (languages.has(languageType)) {
@@ -174,14 +215,26 @@ export async function loadLanguage(languageType: LanguageType): Promise<Language
   await initParser();
   const LanguageClass = getLanguageClass();
 
-  // Check for local WASM file first
-  const localWasmPath = getLocalWasmPath(languageType);
-  let language: Language;
+  // Priority order:
+  // 1. Local project WASM file (./languages/)
+  // 2. Cached WASM file (~/.cache/veto-leash/languages/)
+  // 3. Download from URL and cache
 
+  const localWasmPath = getLocalWasmPath(languageType);
+  const cachedWasmPath = getCachedWasmPath(languageType);
+  
+  let wasmPath: string | null = null;
+
+  // Check local project first
   if (localWasmPath && fs.existsSync(localWasmPath)) {
-    language = await LanguageClass.load(localWasmPath);
-  } else {
-    // Try to fetch from URL (requires network access)
+    wasmPath = localWasmPath;
+  }
+  // Check cache
+  else if (fs.existsSync(cachedWasmPath)) {
+    wasmPath = cachedWasmPath;
+  }
+  // Download and cache
+  else {
     const url = LANGUAGE_WASM_URLS[languageType];
     if (!url) {
       throw new Error(
@@ -189,27 +242,49 @@ export async function loadLanguage(languageType: LanguageType): Promise<Language
         `Supported languages: ${Object.keys(LANGUAGE_WASM_URLS).join(', ')}`
       );
     }
+
     try {
-      language = await LanguageClass.load(url);
-    } catch (error) {
+      await downloadWasmFile(url, cachedWasmPath);
+      wasmPath = cachedWasmPath;
+    } catch (error: any) {
       throw new Error(
-        `Failed to load language ${languageType}. ` +
-        `Please download the WASM file from ${url} to ${localWasmPath || 'the languages directory'}`
+        `Failed to download ${languageType} parser: ${error.message}\n` +
+        `URL: ${url}\n` +
+        `You can manually download and place in: ${cachedWasmPath}`
       );
     }
   }
 
+  const language = await LanguageClass.load(wasmPath);
   languages.set(languageType, language);
   return language;
 }
 
 /**
- * Check if a language is supported (has WASM available)
+ * Check if a language is supported (has WASM available locally or can be downloaded)
  */
 export function isLanguageSupported(languageType: LanguageType): boolean {
+  // Already loaded
+  if (languages.has(languageType)) return true;
+  // Local project WASM
   const localPath = getLocalWasmPath(languageType);
   if (localPath && fs.existsSync(localPath)) return true;
+  // Cached WASM
+  const cachedPath = getCachedWasmPath(languageType);
+  if (fs.existsSync(cachedPath)) return true;
+  // Can be downloaded
   return !!LANGUAGE_WASM_URLS[languageType];
+}
+
+/**
+ * Check if a language WASM is already downloaded (no network needed)
+ */
+export function isLanguageAvailableOffline(languageType: LanguageType): boolean {
+  if (languages.has(languageType)) return true;
+  const localPath = getLocalWasmPath(languageType);
+  if (localPath && fs.existsSync(localPath)) return true;
+  const cachedPath = getCachedWasmPath(languageType);
+  return fs.existsSync(cachedPath);
 }
 
 /**
@@ -415,6 +490,56 @@ export function getCacheStats(): { parserCount: number; treeCacheSize: number; l
     treeCacheSize: treeCache.size,
     languageCount: languages.size,
   };
+}
+
+/**
+ * Get the WASM cache directory path
+ */
+export function getWasmCacheDir(): string {
+  return WASM_CACHE_DIR;
+}
+
+/**
+ * List all cached WASM files
+ */
+export function listCachedLanguages(): LanguageType[] {
+  if (!fs.existsSync(WASM_CACHE_DIR)) return [];
+  
+  const files = fs.readdirSync(WASM_CACHE_DIR);
+  const cached: LanguageType[] = [];
+  
+  for (const file of files) {
+    if (!file.endsWith('.wasm')) continue;
+    // Extract language from filename: tree-sitter-typescript.wasm -> typescript
+    const match = file.match(/^tree-sitter-(.+)\.wasm$/);
+    if (match) {
+      const lang = match[1] as LanguageType;
+      if (LANGUAGE_WASM_URLS[lang]) {
+        cached.push(lang);
+      }
+    }
+  }
+  
+  return cached;
+}
+
+/**
+ * Pre-download all supported language WASM files
+ */
+export async function downloadAllLanguages(): Promise<{ success: LanguageType[]; failed: LanguageType[] }> {
+  const success: LanguageType[] = [];
+  const failed: LanguageType[] = [];
+  
+  for (const lang of Object.keys(LANGUAGE_WASM_URLS) as LanguageType[]) {
+    try {
+      await loadLanguage(lang);
+      success.push(lang);
+    } catch {
+      failed.push(lang);
+    }
+  }
+  
+  return { success, failed };
 }
 
 /**

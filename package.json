@@ -8,8 +8,7 @@
   },
   "type": "module",
   "files": [
-    "dist",
-    "languages"
+    "dist"
   ],
   "scripts": {
     "build": "tsc && chmod +x dist/cli.js",

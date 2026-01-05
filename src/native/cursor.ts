@@ -8,12 +8,17 @@
 // Two integration methods:
 // 1. hooks.json - Real-time hook scripts for beforeShellExecution, afterFileEdit
 // 2. cli-config.json - Permission tokens like Shell(npm), Write(*.ts)
+//
+// Enhanced with AST-based content validation for file operations.
 
-import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync } from 'fs';
-import { join } from 'path';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, copyFileSync, readdirSync } from 'fs';
+import { join, dirname } from 'path';
 import { homedir } from 'os';
+import { fileURLToPath } from 'url';
 import type { Policy } from '../types.js';
 import { COLORS, SYMBOLS } from '../ui/colors.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const CURSOR_CONFIG_DIR = join(homedir(), '.cursor');
 const CURSOR_HOOKS_FILE = join(CURSOR_CONFIG_DIR, 'hooks.json');
@@ -51,8 +56,24 @@ interface StoredPolicies {
 }
 
 /**
+ * Copy a directory recursively
+ */
+function copyDirSync(src: string, dest: string): void {
+  mkdirSync(dest, { recursive: true });
+  for (const entry of readdirSync(src, { withFileTypes: true })) {
+    const srcPath = join(src, entry.name);
+    const destPath = join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+/**
  * Install veto-leash for Cursor CLI
- * Creates hooks.json and validator script
+ * Creates hooks.json and validator script with AST support
  */
 export async function installCursorHooks(
   target: 'global' | 'project' = 'global'
@@ -63,11 +84,54 @@ export async function installCursorHooks(
 
   // Create hooks directory
   mkdirSync(CURSOR_HOOKS_DIR, { recursive: true });
+  mkdirSync(join(CURSOR_HOOKS_DIR, 'policies'), { recursive: true });
 
-  // Write the validator script
-  const validatorPath = join(CURSOR_HOOKS_DIR, 'validator.sh');
-  writeFileSync(validatorPath, VALIDATOR_SCRIPT, { mode: 0o755 });
-  console.log(`  ${COLORS.success}${SYMBOLS.success}${COLORS.reset} Created validator: ${validatorPath}`);
+  // Create package.json for ES modules support
+  writeFileSync(
+    join(CURSOR_HOOKS_DIR, 'package.json'),
+    JSON.stringify({ type: 'module' }, null, 2)
+  );
+
+  // Copy the Node.js validator and its dependencies
+  const distDir = dirname(__dirname);
+  const validatorSrc = join(distDir, 'native', 'validator.js');
+  const validatorDest = join(CURSOR_HOOKS_DIR, 'validator.js');
+  
+  // Copy AST modules
+  const astSrcDir = join(distDir, 'ast');
+  const astDestDir = join(CURSOR_HOOKS_DIR, 'ast');
+  const typesSrc = join(distDir, 'types.js');
+  const typesDest = join(CURSOR_HOOKS_DIR, 'types.js');
+  
+  // Copy WASM files for tree-sitter
+  const wasmSrcDir = join(dirname(distDir), 'languages');
+  const wasmDestDir = join(CURSOR_HOOKS_DIR, 'languages');
+  
+  let useNodeValidator = false;
+
+  try {
+    copyFileSync(validatorSrc, validatorDest);
+    console.log(`  ${COLORS.success}${SYMBOLS.success}${COLORS.reset} Created validator: ${validatorDest}`);
+    
+    copyDirSync(astSrcDir, astDestDir);
+    console.log(`  ${COLORS.success}${SYMBOLS.success}${COLORS.reset} Copied AST modules`);
+    
+    copyFileSync(typesSrc, typesDest);
+    
+    if (existsSync(wasmSrcDir)) {
+      copyDirSync(wasmSrcDir, wasmDestDir);
+      console.log(`  ${COLORS.success}${SYMBOLS.success}${COLORS.reset} Copied language parsers`);
+    }
+    
+    useNodeValidator = true;
+  } catch (err) {
+    console.log(`  ${COLORS.warning}${SYMBOLS.warning}${COLORS.reset} Could not copy validator files: ${(err as Error).message}`);
+    console.log(`  ${COLORS.dim}Falling back to Bash validator${COLORS.reset}`);
+    // Fall back to Bash validator
+    const bashValidatorPath = join(CURSOR_HOOKS_DIR, 'validator.sh');
+    writeFileSync(bashValidatorPath, VALIDATOR_SCRIPT, { mode: 0o755 });
+    console.log(`  ${COLORS.success}${SYMBOLS.success}${COLORS.reset} Created validator: ${bashValidatorPath}`);
+  }
 
   // Write policies to hooks dir for fast access
   const storedPolicies = loadStoredPolicies();
@@ -91,7 +155,12 @@ export async function installCursorHooks(
   }
 
   // Add veto-leash hooks
-  const hookCommand = `"${validatorPath}"`;
+  const validatorPath = useNodeValidator 
+    ? validatorDest 
+    : join(CURSOR_HOOKS_DIR, 'validator.sh');
+  const hookCommand = useNodeValidator
+    ? `node "${validatorPath}"`
+    : `"${validatorPath}"`;
   
   // beforeShellExecution - check commands (CAN block via permission: deny)
   if (!config.hooks.beforeShellExecution) {

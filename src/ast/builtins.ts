@@ -430,6 +430,155 @@ export const AST_BUILTINS: Record<string, ASTRule[]> = {
     },
   ],
 
+  'no settimeout': [
+    {
+      id: 'no-settimeout',
+      query: `(call_expression function: (identifier) @fn (#eq? @fn "setTimeout"))`,
+      languages: ['typescript', 'javascript'],
+      reason: 'setTimeout can lead to race conditions and hard-to-test code',
+      suggest: 'Use debounce/throttle utilities or proper async patterns',
+      regexPreFilter: 'setTimeout',
+    },
+    {
+      id: 'no-setinterval',
+      query: `(call_expression function: (identifier) @fn (#eq? @fn "setInterval"))`,
+      languages: ['typescript', 'javascript'],
+      reason: 'setInterval can cause memory leaks and timing issues',
+      suggest: 'Use requestAnimationFrame or proper scheduling',
+      regexPreFilter: 'setInterval',
+    },
+  ],
+
+  'no sync fs': [
+    {
+      id: 'no-sync-fs-read',
+      query: `(call_expression function: (member_expression property: (property_identifier) @fn (#match? @fn "^(readFileSync|writeFileSync|existsSync|mkdirSync|readdirSync)$")))`,
+      languages: ['typescript', 'javascript'],
+      reason: 'Synchronous file operations block the event loop',
+      suggest: 'Use async variants: fs.promises.readFile, fs.promises.writeFile',
+      regexPreFilter: 'Sync',
+    },
+  ],
+
+  'no document': [
+    {
+      id: 'no-document-getelementbyid',
+      query: `(call_expression function: (member_expression object: (identifier) @obj (#eq? @obj "document") property: (property_identifier) @prop (#match? @prop "^(getElementById|querySelector|querySelectorAll|getElementsByClassName|getElementsByTagName)$")))`,
+      languages: ['typescript', 'javascript'],
+      reason: 'Direct DOM manipulation bypasses React/Vue virtual DOM',
+      suggest: 'Use refs (useRef in React) or component state',
+      regexPreFilter: 'document',
+    },
+    {
+      id: 'no-document-create',
+      query: `(call_expression function: (member_expression object: (identifier) @obj (#eq? @obj "document") property: (property_identifier) @prop (#match? @prop "^(createElement|createTextNode|write|writeln)$")))`,
+      languages: ['typescript', 'javascript'],
+      reason: 'Direct DOM creation bypasses framework rendering',
+      suggest: 'Use JSX or template syntax',
+      regexPreFilter: 'document',
+    },
+  ],
+
+  'no throw string': [
+    {
+      id: 'no-throw-string-literal',
+      query: `(throw_statement (string) @str)`,
+      languages: ['typescript', 'javascript'],
+      reason: 'Throwing strings loses stack trace information',
+      suggest: 'throw new Error("message") or custom error class',
+      regexPreFilter: 'throw',
+    },
+  ],
+
+  'no ts-ignore': [
+    {
+      id: 'no-ts-ignore-comment',
+      // Note: This checks for the comment as a node - works in TypeScript parser
+      query: `(comment) @c (#match? @c "ts-ignore|ts-nocheck|ts-expect-error")`,
+      languages: ['typescript'],
+      reason: 'TypeScript suppression comments hide type errors',
+      suggest: 'Fix the underlying type error instead',
+      regexPreFilter: 'ts-',
+    },
+  ],
+
+  'no eslint-disable': [
+    {
+      id: 'no-eslint-disable-comment',
+      query: `(comment) @c (#match? @c "eslint-disable")`,
+      languages: ['typescript', 'javascript'],
+      reason: 'eslint-disable comments hide potential issues',
+      suggest: 'Fix the underlying issue or configure .eslintrc',
+      regexPreFilter: 'eslint-disable',
+    },
+  ],
+
+  'no window': [
+    {
+      id: 'no-window-location',
+      query: `(member_expression object: (identifier) @obj (#eq? @obj "window") property: (property_identifier) @prop (#match? @prop "^(location|history|localStorage|sessionStorage)$"))`,
+      languages: ['typescript', 'javascript'],
+      reason: 'Direct window access is not SSR-safe',
+      suggest: 'Use framework navigation (next/router, react-router)',
+      regexPreFilter: 'window',
+    },
+  ],
+
+  'no process.env': [
+    {
+      id: 'no-process-env-direct',
+      query: `(member_expression object: (member_expression object: (identifier) @obj (#eq? @obj "process") property: (property_identifier) @prop1 (#eq? @prop1 "env")))`,
+      languages: ['typescript', 'javascript'],
+      reason: 'Direct process.env access should be centralized',
+      suggest: 'Use a config module that validates and types env vars',
+      regexPreFilter: 'process.env',
+    },
+  ],
+
+  'no require': [
+    {
+      id: 'no-commonjs-require',
+      query: `(call_expression function: (identifier) @fn (#eq? @fn "require") arguments: (arguments (string)))`,
+      languages: ['typescript', 'javascript'],
+      reason: 'Use ES modules (import) instead of CommonJS require',
+      suggest: 'import x from "module" or import { x } from "module"',
+      regexPreFilter: 'require',
+    },
+  ],
+
+  'no this': [
+    {
+      id: 'no-this-keyword',
+      query: `(this) @this`,
+      languages: ['typescript', 'javascript'],
+      reason: 'Avoid this in favor of explicit parameters/closures',
+      suggest: 'Use arrow functions or pass context explicitly',
+      regexPreFilter: 'this',
+    },
+  ],
+
+  'no class': [
+    {
+      id: 'no-class-declaration',
+      query: `(class_declaration) @class`,
+      languages: ['typescript', 'javascript'],
+      reason: 'Prefer functions and composition over classes',
+      suggest: 'Use functions, closures, and plain objects',
+      regexPreFilter: 'class',
+    },
+  ],
+
+  'no mutation': [
+    {
+      id: 'no-array-push',
+      query: `(call_expression function: (member_expression property: (property_identifier) @fn (#match? @fn "^(push|pop|shift|unshift|splice|sort|reverse)$")))`,
+      languages: ['typescript', 'javascript'],
+      reason: 'Array mutation can cause unexpected side effects',
+      suggest: 'Use immutable methods: concat, slice, filter, map, toSorted',
+      regexPreFilter: 'push',
+    },
+  ],
+
   // ═══════════════════════════════════════════════════════════════════════════
   // PYTHON PATTERNS
   // ═══════════════════════════════════════════════════════════════════════════
@@ -493,6 +642,71 @@ export const AST_BUILTINS: Record<string, ASTRule[]> = {
     },
   ],
 
+  'no python global': [
+    {
+      id: 'no-python-global',
+      query: `(global_statement) @global`,
+      languages: ['python'],
+      reason: 'Global statements make code hard to test and reason about',
+      suggest: 'Pass state explicitly or use a class',
+      regexPreFilter: 'global',
+    },
+  ],
+
+  'no python assert': [
+    {
+      id: 'no-python-assert',
+      query: `(assert_statement) @assert`,
+      languages: ['python'],
+      reason: 'assert is stripped in production (-O flag)',
+      suggest: 'Use explicit if/raise for validation',
+      regexPreFilter: 'assert',
+    },
+  ],
+
+  'no python bare except': [
+    {
+      id: 'no-python-bare-except',
+      // Matches: except: (without exception type)
+      query: `(except_clause) @exc`,
+      languages: ['python'],
+      reason: 'Bare except catches all exceptions including SystemExit',
+      suggest: 'Use except Exception: or specific exception types',
+      regexPreFilter: 'except',
+    },
+  ],
+
+  'no python pickle': [
+    {
+      id: 'no-python-pickle-import',
+      query: `(import_statement name: (dotted_name) @name (#eq? @name "pickle"))`,
+      languages: ['python'],
+      reason: 'pickle can execute arbitrary code during deserialization',
+      suggest: 'Use JSON, MessagePack, or Protocol Buffers',
+      regexPreFilter: 'pickle',
+    },
+    {
+      id: 'no-python-pickle-from',
+      query: `(import_from_statement module_name: (dotted_name) @name (#eq? @name "pickle"))`,
+      languages: ['python'],
+      reason: 'pickle can execute arbitrary code during deserialization',
+      suggest: 'Use JSON, MessagePack, or Protocol Buffers',
+      regexPreFilter: 'pickle',
+    },
+  ],
+
+  'no python subprocess shell': [
+    {
+      id: 'no-python-subprocess-shell',
+      // This catches subprocess calls with shell=True
+      query: `(call function: (attribute object: (identifier) @mod (#eq? @mod "subprocess")) arguments: (argument_list (keyword_argument name: (identifier) @key (#eq? @key "shell") value: (true))))`,
+      languages: ['python'],
+      reason: 'subprocess with shell=True is vulnerable to injection',
+      suggest: 'Use subprocess.run(["cmd", "arg"], shell=False)',
+      regexPreFilter: 'shell',
+    },
+  ],
+
   // ═══════════════════════════════════════════════════════════════════════════
   // GO PATTERNS
   // ═══════════════════════════════════════════════════════════════════════════
@@ -516,6 +730,50 @@ export const AST_BUILTINS: Record<string, ASTRule[]> = {
       reason: 'Avoid panic in production code',
       suggest: 'Return errors instead of panicking',
       regexPreFilter: 'panic',
+    },
+  ],
+
+  'no go log.fatal': [
+    {
+      id: 'no-go-log-fatal',
+      query: `(call_expression function: (selector_expression operand: (identifier) @pkg (#eq? @pkg "log") field: (field_identifier) @fn (#match? @fn "^(Fatal|Fatalf|Fatalln)$")))`,
+      languages: ['go'],
+      reason: 'log.Fatal calls os.Exit, skipping deferred functions',
+      suggest: 'Return error and let main() decide exit behavior',
+      regexPreFilter: 'Fatal',
+    },
+  ],
+
+  'no go os.exit': [
+    {
+      id: 'no-go-os-exit',
+      query: `(call_expression function: (selector_expression operand: (identifier) @pkg (#eq? @pkg "os") field: (field_identifier) @fn (#eq? @fn "Exit")))`,
+      languages: ['go'],
+      reason: 'os.Exit skips deferred functions and cleanup',
+      suggest: 'Return from main() instead, or use runtime.Goexit()',
+      regexPreFilter: 'Exit',
+    },
+  ],
+
+  'no go init': [
+    {
+      id: 'no-go-init-function',
+      query: `(function_declaration name: (identifier) @fn (#eq? @fn "init"))`,
+      languages: ['go'],
+      reason: 'init() functions run implicitly and complicate testing',
+      suggest: 'Use explicit initialization functions',
+      regexPreFilter: 'func init',
+    },
+  ],
+
+  'no go interface{}': [
+    {
+      id: 'no-go-empty-interface',
+      query: `(interface_type) @iface`,
+      languages: ['go'],
+      reason: 'Empty interface (any) loses type safety',
+      suggest: 'Use generics or specific interface types',
+      regexPreFilter: 'interface{}',
     },
   ],
 
@@ -602,32 +860,33 @@ export const AST_BUILTINS: Record<string, ASTRule[]> = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   'no hardcoded secrets': [
-    // JavaScript/TypeScript
+    // JavaScript/TypeScript - common secret variable patterns
     {
       id: 'no-js-hardcoded-key',
-      query: `(variable_declarator name: (identifier) @name (#match? @name "(?i)(api_?key|secret|password|token|credential)") value: (string) @value)`,
+      // Matches: api_key, apiKey, API_KEY, secret, password, token, credential (case variations via alternation)
+      query: `(variable_declarator name: (identifier) @name (#match? @name "(api_?[kK]ey|API_?KEY|[sS]ecret|SECRET|[pP]assword|PASSWORD|[tT]oken|TOKEN|[cC]redential|CREDENTIAL)") value: (string) @value)`,
       languages: ['typescript', 'javascript'],
       reason: 'Hardcoded secrets detected',
       suggest: 'Use environment variables or a secrets manager',
-      regexPreFilter: 'key',
+      regexPreFilter: '=',
     },
-    // Python
+    // Python - common secret variable patterns
     {
       id: 'no-python-hardcoded-key',
-      query: `(assignment left: (identifier) @name (#match? @name "(?i)(api_?key|secret|password|token|credential)") right: (string) @value)`,
+      query: `(assignment left: (identifier) @name (#match? @name "(api_?[kK]ey|API_?KEY|[sS]ecret|SECRET|[pP]assword|PASSWORD|[tT]oken|TOKEN|[cC]redential|CREDENTIAL)") right: (string) @value)`,
       languages: ['python'],
       reason: 'Hardcoded secrets detected',
       suggest: 'Use environment variables or a secrets manager',
-      regexPreFilter: 'key',
+      regexPreFilter: '=',
     },
-    // Go
+    // Go - common secret variable patterns
     {
       id: 'no-go-hardcoded-key',
-      query: `(var_declaration (var_spec name: (identifier) @name (#match? @name "(?i)(apiKey|secret|password|token|credential)") value: (expression_list (interpreted_string_literal))))`,
+      query: `(var_declaration (var_spec name: (identifier) @name (#match? @name "(api[kK]ey|API_?KEY|[sS]ecret|SECRET|[pP]assword|PASSWORD|[tT]oken|TOKEN|[cC]redential|CREDENTIAL)") value: (expression_list (interpreted_string_literal))))`,
       languages: ['go'],
       reason: 'Hardcoded secrets detected',
       suggest: 'Use environment variables or a secrets manager',
-      regexPreFilter: 'key',
+      regexPreFilter: '=',
     },
   ],
 
@@ -649,6 +908,248 @@ export const AST_BUILTINS: Record<string, ASTRule[]> = {
       reason: 'Potential SQL injection via string formatting',
       suggest: 'Use parameterized queries with placeholders',
       regexPreFilter: 'execute',
+    },
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RUBY PATTERNS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  'no ruby puts': [
+    {
+      id: 'no-ruby-puts',
+      query: `(call method: (identifier) @fn (#match? @fn "^(puts|p|pp|print)$"))`,
+      languages: ['ruby'],
+      reason: 'Use Rails.logger or structured logging instead of puts/print',
+      suggest: 'Rails.logger.info(), Rails.logger.debug()',
+      regexPreFilter: 'puts',
+    },
+  ],
+
+  'no ruby eval': [
+    {
+      id: 'no-ruby-eval',
+      query: `(call method: (identifier) @fn (#eq? @fn "eval"))`,
+      languages: ['ruby'],
+      reason: 'eval() is a security risk - arbitrary code execution',
+      suggest: 'Refactor to avoid dynamic code execution',
+      regexPreFilter: 'eval',
+    },
+    {
+      id: 'no-ruby-instance-eval',
+      query: `(call method: (identifier) @fn (#match? @fn "^(instance_eval|class_eval|module_eval)$"))`,
+      languages: ['ruby'],
+      reason: 'instance_eval/class_eval can execute arbitrary code',
+      suggest: 'Use define_method or explicit method definitions',
+      regexPreFilter: 'eval',
+    },
+  ],
+
+  'no ruby system': [
+    {
+      id: 'no-ruby-system-exec',
+      query: `(call method: (identifier) @fn (#match? @fn "^(system|exec|spawn)$"))`,
+      languages: ['ruby'],
+      reason: 'Shell command execution can lead to injection vulnerabilities',
+      suggest: 'Use Open3.capture3 with explicit arguments array',
+      regexPreFilter: 'system',
+    },
+    {
+      id: 'no-ruby-backticks',
+      query: `(subshell) @cmd`,
+      languages: ['ruby'],
+      reason: 'Backtick shell execution is vulnerable to injection',
+      suggest: 'Use Open3.capture3 with explicit arguments',
+      regexPreFilter: '`',
+    },
+  ],
+
+  'no ruby binding.pry': [
+    {
+      id: 'no-ruby-pry',
+      query: `(call receiver: (identifier) @recv (#eq? @recv "binding") method: (identifier) @method (#eq? @method "pry"))`,
+      languages: ['ruby'],
+      reason: 'Remove debug statements before committing',
+      suggest: 'Remove binding.pry',
+      regexPreFilter: 'pry',
+    },
+    {
+      id: 'no-ruby-byebug',
+      query: `(call method: (identifier) @fn (#eq? @fn "byebug"))`,
+      languages: ['ruby'],
+      reason: 'Remove debug statements before committing',
+      suggest: 'Remove byebug',
+      regexPreFilter: 'byebug',
+    },
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHP PATTERNS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  'no php echo': [
+    {
+      id: 'no-php-echo',
+      query: `(echo_statement) @echo`,
+      languages: ['php'],
+      reason: 'Use template engine or proper response methods instead of echo',
+      suggest: 'Use Blade, Twig, or return response objects',
+      regexPreFilter: 'echo',
+    },
+    {
+      id: 'no-php-print',
+      query: `(print_intrinsic) @print`,
+      languages: ['php'],
+      reason: 'Use template engine instead of print',
+      suggest: 'Use Blade, Twig, or return response objects',
+      regexPreFilter: 'print',
+    },
+  ],
+
+  'no php eval': [
+    {
+      id: 'no-php-eval',
+      query: `(function_call_expression function: (name) @fn (#eq? @fn "eval"))`,
+      languages: ['php'],
+      reason: 'eval() is a critical security vulnerability',
+      suggest: 'Refactor to avoid dynamic code execution',
+      regexPreFilter: 'eval',
+    },
+    {
+      id: 'no-php-create-function',
+      query: `(function_call_expression function: (name) @fn (#eq? @fn "create_function"))`,
+      languages: ['php'],
+      reason: 'create_function is deprecated and vulnerable',
+      suggest: 'Use anonymous functions (closures) instead',
+      regexPreFilter: 'create_function',
+    },
+  ],
+
+  'no php shell': [
+    {
+      id: 'no-php-exec',
+      query: `(function_call_expression function: (name) @fn (#match? @fn "^(exec|shell_exec|system|passthru|popen|proc_open)$"))`,
+      languages: ['php'],
+      reason: 'Shell command execution can lead to command injection',
+      suggest: 'Use escapeshellarg() and escapeshellcmd() if absolutely necessary',
+      regexPreFilter: 'exec',
+    },
+    {
+      id: 'no-php-backtick',
+      query: `(shell_command_expression) @cmd`,
+      languages: ['php'],
+      reason: 'Backtick shell execution is vulnerable to injection',
+      suggest: 'Avoid shell commands; use PHP libraries instead',
+      regexPreFilter: '`',
+    },
+  ],
+
+  'no php mysql': [
+    {
+      id: 'no-php-mysql-connect',
+      query: `(function_call_expression function: (name) @fn (#match? @fn "^mysql_(connect|query|fetch|select_db|close)"))`,
+      languages: ['php'],
+      reason: 'mysql_* functions are deprecated and removed in PHP 7+',
+      suggest: 'Use PDO or mysqli with prepared statements',
+      regexPreFilter: 'mysql_',
+    },
+  ],
+
+  'no php die': [
+    {
+      id: 'no-php-die',
+      query: `(exit_statement) @exit`,
+      languages: ['php'],
+      reason: 'die/exit abruptly terminates execution without cleanup',
+      suggest: 'Throw exceptions for error handling',
+      regexPreFilter: 'die',
+    },
+  ],
+
+  'no php var_dump': [
+    {
+      id: 'no-php-var-dump',
+      query: `(function_call_expression function: (name) @fn (#match? @fn "^(var_dump|print_r|var_export)$"))`,
+      languages: ['php'],
+      reason: 'Remove debug output before committing',
+      suggest: 'Use proper logging (Monolog) or remove debug code',
+      regexPreFilter: 'var_dump',
+    },
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BASH PATTERNS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  'no bash eval': [
+    {
+      id: 'no-bash-eval',
+      query: `(command name: (command_name) @cmd (#eq? @cmd "eval"))`,
+      languages: ['bash'],
+      reason: 'eval is a security risk - arbitrary command execution',
+      suggest: 'Refactor to avoid eval; use arrays for complex commands',
+      regexPreFilter: 'eval',
+    },
+  ],
+
+  'no bash rm rf root': [
+    {
+      id: 'no-bash-rm-rf-root',
+      // This is hard to catch precisely in AST, using simple command check
+      query: `(command name: (command_name) @cmd (#eq? @cmd "rm") argument: (word) @arg (#match? @arg "^(-rf|-r|-f)$"))`,
+      languages: ['bash'],
+      reason: 'rm -rf with root paths can be catastrophic',
+      suggest: 'Use more specific paths and add safety checks',
+      regexPreFilter: 'rm',
+    },
+  ],
+
+  'no bash curl pipe': [
+    {
+      id: 'no-bash-curl-pipe-bash',
+      // Pipeline where curl output goes to bash/sh
+      query: `(pipeline (command name: (command_name) @curl (#match? @curl "^(curl|wget)$")) (command name: (command_name) @shell (#match? @shell "^(bash|sh|zsh)$")))`,
+      languages: ['bash'],
+      reason: 'Piping downloaded scripts to shell is a security risk',
+      suggest: 'Download first, review, then execute: curl -o script.sh URL && bash script.sh',
+      regexPreFilter: 'curl',
+    },
+  ],
+
+  'no bash sudo': [
+    {
+      id: 'no-bash-sudo',
+      query: `(command name: (command_name) @cmd (#eq? @cmd "sudo"))`,
+      languages: ['bash'],
+      reason: 'Avoid sudo in scripts; use proper permissions instead',
+      suggest: 'Configure proper file permissions or use a service account',
+      regexPreFilter: 'sudo',
+    },
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // KOTLIN PATTERNS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  'no kotlin println': [
+    {
+      id: 'no-kotlin-println',
+      query: `(call_expression (simple_identifier) @fn (#match? @fn "^(println|print)$"))`,
+      languages: ['kotlin'],
+      reason: 'Use proper logging instead of println',
+      suggest: 'Use SLF4J, Logback, or Timber for logging',
+      regexPreFilter: 'print',
+    },
+  ],
+
+  'no kotlin bang operator': [
+    {
+      id: 'no-kotlin-not-null-assertion',
+      query: `(postfix_expression (postfix_unary_operator) @op (#eq? @op "!!"))`,
+      languages: ['kotlin'],
+      reason: '!! can throw NullPointerException at runtime',
+      suggest: 'Use safe calls (?.) or null checks instead',
+      regexPreFilter: '!!',
     },
   ],
 };
