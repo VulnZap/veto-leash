@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,49 +15,123 @@ import (
 	"github.com/vulnzap/leash/internal/builtin"
 	"github.com/vulnzap/leash/internal/config"
 	"github.com/vulnzap/leash/internal/engine"
-	"github.com/vulnzap/leash/internal/tui"
 )
 
-const version = "2.0.0"
+const version = "2.0.3"
 
-// view represents different screens in the TUI
+// ASCII Logo
+const logo = `
+ ██▒   █▓▓█████▄▄▄█████▓ ▒█████  
+▓██░   █▒▓█   ▀▓  ██▒ ▓▒▒██▒  ██▒
+ ▓██  █▒░▒███  ▒ ▓██░ ▒░▒██░  ██▒
+  ▒██ █░░▒▓█  ▄░ ▓██▓ ░ ▒██   ██░
+   ▒▀█░  ░▒████▒ ▒██▒ ░ ░ ████▓▒░
+   ░ ▐░  ░░ ▒░ ░ ▒ ░░   ░ ▒░▒░▒░ 
+   ░ ░░   ░ ░  ░   ░      ░ ▒ ▒░ 
+     ░░     ░    ░      ░ ░ ░ ▒  
+      ░     ░  ░            ░ ░  `
+
+const logoSmall = `┃▌║█║▌│║▌│║▌║▌█║ veto`
+
+// Views
 type view int
 
 const (
-	viewHome view = iota
+	viewDashboard view = iota
 	viewPolicies
-	viewAdd
-	viewAddCompiling
-	viewStatus
+	viewAgents
+	viewAddPolicy
+	viewCompiling
 	viewHelp
 )
 
+// Theme - adaptive colors
+type theme struct {
+	primary    lipgloss.AdaptiveColor
+	secondary  lipgloss.AdaptiveColor
+	muted      lipgloss.AdaptiveColor
+	accent     lipgloss.AdaptiveColor
+	success    lipgloss.AdaptiveColor
+	warning    lipgloss.AdaptiveColor
+	error      lipgloss.AdaptiveColor
+	border     lipgloss.AdaptiveColor
+	highlight  lipgloss.AdaptiveColor
+	background lipgloss.AdaptiveColor
+}
+
+var t = theme{
+	primary:    lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#ffffff"},
+	secondary:  lipgloss.AdaptiveColor{Light: "#444444", Dark: "#cccccc"},
+	muted:      lipgloss.AdaptiveColor{Light: "#888888", Dark: "#666666"},
+	accent:     lipgloss.AdaptiveColor{Light: "#6366f1", Dark: "#818cf8"},
+	success:    lipgloss.AdaptiveColor{Light: "#059669", Dark: "#34d399"},
+	warning:    lipgloss.AdaptiveColor{Light: "#d97706", Dark: "#fbbf24"},
+	error:      lipgloss.AdaptiveColor{Light: "#dc2626", Dark: "#f87171"},
+	border:     lipgloss.AdaptiveColor{Light: "#e5e5e5", Dark: "#333333"},
+	highlight:  lipgloss.AdaptiveColor{Light: "#f3f4f6", Dark: "#1f1f1f"},
+	background: lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#0a0a0a"},
+}
+
 // Styles
 var (
-	colorPrimary   = lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#fafafa"}
-	colorSecondary = lipgloss.AdaptiveColor{Light: "#666666", Dark: "#888888"}
-	colorMuted     = lipgloss.AdaptiveColor{Light: "#999999", Dark: "#555555"}
-	colorAccent    = lipgloss.AdaptiveColor{Light: "#0066cc", Dark: "#4da6ff"}
-	colorSuccess   = lipgloss.AdaptiveColor{Light: "#00994d", Dark: "#00cc66"}
-	colorError     = lipgloss.AdaptiveColor{Light: "#cc0000", Dark: "#ff4444"}
-	colorBorder    = lipgloss.AdaptiveColor{Light: "#dddddd", Dark: "#333333"}
+	baseStyle = lipgloss.NewStyle()
 
-	titleStyle   = lipgloss.NewStyle().Bold(true).Foreground(colorPrimary).MarginBottom(1)
-	mutedStyle   = lipgloss.NewStyle().Foreground(colorMuted)
-	keyStyle     = lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
-	boxStyle     = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorBorder).Padding(1, 2)
-	successStyle = lipgloss.NewStyle().Foreground(colorSuccess)
-	errorStyle   = lipgloss.NewStyle().Foreground(colorError)
+	logoStyle = lipgloss.NewStyle().
+			Foreground(t.accent).
+			Bold(true)
+
+	titleStyle = lipgloss.NewStyle().
+			Foreground(t.primary).
+			Bold(true).
+			MarginBottom(1)
+
+	subtitleStyle = lipgloss.NewStyle().
+			Foreground(t.muted).
+			Italic(true)
+
+	mutedStyle = lipgloss.NewStyle().
+			Foreground(t.muted)
+
+	accentStyle = lipgloss.NewStyle().
+			Foreground(t.accent).
+			Bold(true)
+
+	successStyle = lipgloss.NewStyle().
+			Foreground(t.success)
+
+	warningStyle = lipgloss.NewStyle().
+			Foreground(t.warning)
+
+	errorStyle = lipgloss.NewStyle().
+			Foreground(t.error)
+
+	panelStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(t.border).
+			Padding(1, 2)
+
+	activePanelStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(t.accent).
+				Padding(1, 2)
+
+	selectedStyle = lipgloss.NewStyle().
+			Foreground(t.accent).
+			Bold(true)
+
+	keyStyle = lipgloss.NewStyle().
+			Foreground(t.accent).
+			Bold(true)
+
+	helpKeyStyle = lipgloss.NewStyle().
+			Foreground(t.muted)
+
+	statusBarStyle = lipgloss.NewStyle().
+			Foreground(t.muted).
+			Padding(0, 1)
 )
 
-// policyItem implements list.Item for policies
-type policyItem string
-
-func (p policyItem) Title() string       { return string(p) }
-func (p policyItem) Description() string { return "" }
-func (p policyItem) FilterValue() string { return string(p) }
-
-// model is the root Bubble Tea model
+// Model
 type model struct {
 	view     view
 	width    int
@@ -66,29 +139,37 @@ type model struct {
 	ready    bool
 	quitting bool
 
-	// Components
-	textInput  textinput.Model
-	spinner    spinner.Model
-	policyList list.Model
-
-	// State
+	// Data
 	policies []string
-	message  string
-	err      error
+	agents   []agent.Agent
+
+	// UI State
+	selectedPolicy int
+	selectedAgent  int
+	message        string
+	messageType    string // "success", "error", "info"
+
+	// Components
+	textInput textinput.Model
+	spinner   spinner.Model
 }
 
-func initialModel() model {
-	// Text input for adding policies
+func newModel() model {
+	// Text input
 	ti := textinput.New()
-	ti.Placeholder = "protect .env"
+	ti.Placeholder = "no lodash"
 	ti.CharLimit = 200
-	ti.Width = 50
+	ti.Width = 40
+	ti.PromptStyle = accentStyle
+	ti.TextStyle = lipgloss.NewStyle().Foreground(t.primary)
+	ti.PlaceholderStyle = mutedStyle
 
-	// Spinner for compilation
+	// Spinner
 	sp := spinner.New()
-	sp.Spinner = spinner.Dot
+	sp.Spinner = spinner.Points
+	sp.Style = accentStyle
 
-	// Load existing policies
+	// Load policies
 	var policies []string
 	if config.Exists() {
 		if path, err := config.Find(); err == nil {
@@ -98,30 +179,22 @@ func initialModel() model {
 		}
 	}
 
-	// Create policy list items
-	items := make([]list.Item, len(policies))
-	for i, p := range policies {
-		items[i] = policyItem(p)
-	}
-
-	// Initialize list with delegate
-	delegate := list.NewDefaultDelegate()
-	policyList := list.New(items, delegate, 80, 20)
-	policyList.Title = "Policies"
-	policyList.SetShowHelp(false)
-	policyList.SetFilteringEnabled(false)
+	// Detect agents
+	agents := agent.DetectInstalled()
 
 	return model{
-		view:       viewHome,
-		textInput:  ti,
-		spinner:    sp,
-		policies:   policies,
-		policyList: policyList,
+		view:      viewDashboard,
+		policies:  policies,
+		agents:    agents,
+		textInput: ti,
+		spinner:   sp,
 	}
 }
 
 func (m model) Init() tea.Cmd {
-	return nil
+	return tea.Batch(
+		textinput.Blink,
+	)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -133,83 +206,130 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.ready = true
 
-		// Update list size
-		h := m.height - 10
-		if h < 5 {
-			h = 5
-		}
-		m.policyList.SetSize(m.width-4, h)
-
 	case tea.KeyMsg:
-		// Handle text input mode
-		if m.view == viewAdd && m.textInput.Focused() {
+		// Text input mode
+		if m.view == viewAddPolicy && m.textInput.Focused() {
 			switch msg.String() {
 			case "enter":
 				policy := strings.TrimSpace(m.textInput.Value())
 				if policy != "" {
-					m.view = viewAddCompiling
+					m.view = viewCompiling
 					m.textInput.Reset()
 					return m, tea.Batch(m.spinner.Tick, compilePolicy(policy))
 				}
 			case "esc":
 				m.textInput.Blur()
-				m.view = viewHome
+				m.textInput.Reset()
+				m.view = viewDashboard
 				return m, nil
+			default:
+				var cmd tea.Cmd
+				m.textInput, cmd = m.textInput.Update(msg)
+				return m, cmd
 			}
-
-			var cmd tea.Cmd
-			m.textInput, cmd = m.textInput.Update(msg)
-			return m, cmd
 		}
 
-		// Global key handling
+		// Global keys
 		switch msg.String() {
 		case "q", "ctrl+c":
 			m.quitting = true
 			return m, tea.Quit
-		case "?":
-			if m.view != viewHelp {
-				m.view = viewHelp
-			} else {
-				m.view = viewHome
-			}
+
 		case "esc":
-			m.view = viewHome
-			m.message = ""
-		case "i":
-			// Run init wizard (blocking, outside TUI)
-			return m, runInitWizard
-		case "p":
+			if m.view != viewDashboard {
+				m.view = viewDashboard
+				m.message = ""
+			}
+
+		case "?":
+			if m.view == viewHelp {
+				m.view = viewDashboard
+			} else {
+				m.view = viewHelp
+			}
+
+		// Dashboard navigation
+		case "1", "p":
 			m.view = viewPolicies
-			m.updatePolicyList()
+		case "2", "g":
+			m.view = viewAgents
 		case "a":
-			m.view = viewAdd
+			m.view = viewAddPolicy
 			m.textInput.Focus()
 			return m, textinput.Blink
+		case "i":
+			return m, runInit(&m)
 		case "s":
-			m.view = viewStatus
+			return m, runSync(&m)
+
+		// List navigation
+		case "j", "down":
+			if m.view == viewPolicies && len(m.policies) > 0 {
+				m.selectedPolicy = (m.selectedPolicy + 1) % len(m.policies)
+			} else if m.view == viewAgents && len(m.agents) > 0 {
+				m.selectedAgent = (m.selectedAgent + 1) % len(m.agents)
+			}
+		case "k", "up":
+			if m.view == viewPolicies && len(m.policies) > 0 {
+				m.selectedPolicy--
+				if m.selectedPolicy < 0 {
+					m.selectedPolicy = len(m.policies) - 1
+				}
+			} else if m.view == viewAgents && len(m.agents) > 0 {
+				m.selectedAgent--
+				if m.selectedAgent < 0 {
+					m.selectedAgent = len(m.agents) - 1
+				}
+			}
+		case "d", "backspace":
+			if m.view == viewPolicies && len(m.policies) > 0 {
+				policy := m.policies[m.selectedPolicy]
+				if err := config.RemovePolicy(policy); err == nil {
+					m.policies = append(m.policies[:m.selectedPolicy], m.policies[m.selectedPolicy+1:]...)
+					if m.selectedPolicy >= len(m.policies) && m.selectedPolicy > 0 {
+						m.selectedPolicy--
+					}
+					m.message = "Removed: " + policy
+					m.messageType = "info"
+				}
+			}
+		case "enter":
+			if m.view == viewAgents && len(m.agents) > 0 {
+				a := m.agents[m.selectedAgent]
+				if err := agent.Install(a.ID); err == nil {
+					m.message = "Synced to " + a.Name
+					m.messageType = "success"
+				} else {
+					m.message = err.Error()
+					m.messageType = "error"
+				}
+			}
 		}
 
 	case policyCompiledMsg:
 		if msg.err != nil {
-			m.message = errorStyle.Render("x ") + msg.err.Error()
+			m.message = msg.err.Error()
+			m.messageType = "error"
 		} else {
-			// Add to config
 			if err := config.AddPolicy(msg.policy); err != nil {
-				m.message = errorStyle.Render("x ") + err.Error()
+				m.message = err.Error()
+				m.messageType = "error"
 			} else {
 				m.policies = append(m.policies, msg.policy)
-				m.message = successStyle.Render("+ ") + "Policy added: " + msg.policy
+				m.message = "Added: " + msg.policy
+				m.messageType = "success"
 			}
 		}
-		m.view = viewHome
+		m.view = viewDashboard
 
-	case initWizardDoneMsg:
+	case initDoneMsg:
 		if msg.err != nil {
-			m.message = errorStyle.Render("x ") + msg.err.Error()
-		} else if msg.result != nil && !msg.result.Cancelled {
-			m.message = successStyle.Render("+ ") + "Setup complete"
-			// Reload policies
+			m.message = msg.err.Error()
+			m.messageType = "error"
+		} else {
+			m.message = "Initialized .leash"
+			m.messageType = "success"
+			// Reload
 			if config.Exists() {
 				if path, err := config.Find(); err == nil {
 					if cfg, err := config.Load(path); err == nil {
@@ -218,211 +338,310 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-		return m, nil
+
+	case syncDoneMsg:
+		if msg.err != nil {
+			m.message = msg.err.Error()
+			m.messageType = "error"
+		} else {
+			m.message = fmt.Sprintf("Synced to %d agents", msg.count)
+			m.messageType = "success"
+		}
 
 	case spinner.TickMsg:
-		if m.view == viewAddCompiling {
+		if m.view == viewCompiling {
 			var cmd tea.Cmd
 			m.spinner, cmd = m.spinner.Update(msg)
-			return m, cmd
+			cmds = append(cmds, cmd)
 		}
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
-func (m *model) updatePolicyList() {
-	items := make([]list.Item, len(m.policies))
-	for i, p := range m.policies {
-		items[i] = policyItem(p)
-	}
-
-	delegate := list.NewDefaultDelegate()
-	m.policyList = list.New(items, delegate, m.width-4, m.height-10)
-	m.policyList.Title = "Policies"
-	m.policyList.SetShowStatusBar(false)
-	m.policyList.SetFilteringEnabled(false)
-}
-
 func (m model) View() string {
 	if m.quitting {
 		return ""
 	}
-
 	if !m.ready {
-		return "loading..."
+		return "\n  Loading..."
 	}
 
 	var content string
 
 	switch m.view {
-	case viewHome:
-		content = m.viewHome()
+	case viewDashboard:
+		content = m.renderDashboard()
 	case viewPolicies:
-		content = m.viewPolicies()
-	case viewAdd:
-		content = m.viewAdd()
-	case viewAddCompiling:
-		content = m.viewCompiling()
-	case viewStatus:
-		content = m.viewStatus()
+		content = m.renderPolicies()
+	case viewAgents:
+		content = m.renderAgents()
+	case viewAddPolicy:
+		content = m.renderAddPolicy()
+	case viewCompiling:
+		content = m.renderCompiling()
 	case viewHelp:
-		content = m.viewHelp()
+		content = m.renderHelp()
 	}
 
-	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+	return lipgloss.Place(
+		m.width, m.height,
+		lipgloss.Center, lipgloss.Center,
+		content,
+	)
 }
 
-func (m model) viewHome() string {
-	logo := lipgloss.NewStyle().Bold(true).Foreground(colorPrimary).Render("leash")
-	subtitle := mutedStyle.Render("sudo for AI agents")
+func (m model) renderDashboard() string {
+	// Logo
+	logoView := logoStyle.Render(logo)
 
-	keys := fmt.Sprintf(
-		"%s init   %s policies   %s add   %s status   %s help   %s quit",
-		keyStyle.Render("i"),
-		keyStyle.Render("p"),
-		keyStyle.Render("a"),
-		keyStyle.Render("s"),
-		keyStyle.Render("?"),
-		keyStyle.Render("q"),
+	// Tagline
+	tagline := subtitleStyle.Render("sudo for AI agents")
+
+	// Stats row
+	policyCount := fmt.Sprintf("%d", len(m.policies))
+	agentCount := fmt.Sprintf("%d", len(m.agents))
+
+	statsBox := lipgloss.JoinHorizontal(
+		lipgloss.Center,
+		panelStyle.Width(20).Align(lipgloss.Center).Render(
+			lipgloss.JoinVertical(lipgloss.Center,
+				accentStyle.Render(policyCount),
+				mutedStyle.Render("policies"),
+			),
+		),
+		"  ",
+		panelStyle.Width(20).Align(lipgloss.Center).Render(
+			lipgloss.JoinVertical(lipgloss.Center,
+				accentStyle.Render(agentCount),
+				mutedStyle.Render("agents"),
+			),
+		),
 	)
 
-	parts := []string{
-		"",
-		logo,
-		subtitle,
-		"",
-		mutedStyle.Render("v" + version),
-		"",
-	}
-
-	// Show message if any
-	if m.message != "" {
-		parts = append(parts, "", m.message)
-	}
-
-	// Show policy count
-	if len(m.policies) > 0 {
-		parts = append(parts, "", mutedStyle.Render(fmt.Sprintf("%d policies configured", len(m.policies))))
-	}
-
-	parts = append(parts, "", "", keys)
-
-	return lipgloss.JoinVertical(lipgloss.Center, parts...)
-}
-
-func (m model) viewPolicies() string {
-	if len(m.policies) == 0 {
-		return boxStyle.Render(lipgloss.JoinVertical(
-			lipgloss.Left,
-			titleStyle.Render("Policies"),
-			"",
-			mutedStyle.Render("No policies configured."),
-			"",
-			mutedStyle.Render("Press 'a' to add a policy, 'i' to run setup."),
-			"",
-			mutedStyle.Render("[esc] back"),
-		))
-	}
-
-	var policyLines []string
-	for _, p := range m.policies {
-		// Check if it's a builtin
-		indicator := "  "
-		if b := builtin.Find(p); b != nil {
-			indicator = "* "
-		}
-		policyLines = append(policyLines, indicator+p)
-	}
-
-	return boxStyle.Render(lipgloss.JoinVertical(
-		lipgloss.Left,
-		titleStyle.Render("Policies"),
-		"",
-		strings.Join(policyLines, "\n"),
-		"",
-		mutedStyle.Render("* = builtin pattern"),
-		"",
-		mutedStyle.Render("[a] add  [esc] back"),
-	))
-}
-
-func (m model) viewAdd() string {
-	return boxStyle.Render(lipgloss.JoinVertical(
-		lipgloss.Left,
-		titleStyle.Render("Add Policy"),
-		"",
-		"Describe what you want to restrict:",
-		"",
-		m.textInput.View(),
-		"",
-		mutedStyle.Render("Examples:"),
-		mutedStyle.Render("  protect .env"),
-		mutedStyle.Render("  don't delete test files"),
-		mutedStyle.Render("  no lodash"),
-		mutedStyle.Render("  prefer pnpm"),
-		"",
-		mutedStyle.Render("[enter] add  [esc] back"),
-	))
-}
-
-func (m model) viewCompiling() string {
-	return boxStyle.Render(lipgloss.JoinVertical(
+	// Quick actions
+	actions := lipgloss.JoinHorizontal(
 		lipgloss.Center,
-		"",
-		m.spinner.View()+" Compiling policy...",
-		"",
-	))
-}
+		keyStyle.Render("a")+" add   ",
+		keyStyle.Render("1")+" policies   ",
+		keyStyle.Render("2")+" agents   ",
+		keyStyle.Render("i")+" init   ",
+		keyStyle.Render("s")+" sync   ",
+		keyStyle.Render("?")+" help   ",
+		keyStyle.Render("q")+" quit",
+	)
 
-func (m model) viewStatus() string {
-	agents := agent.DetectInstalled()
-
-	var agentLines []string
-	if len(agents) == 0 {
-		agentLines = append(agentLines, mutedStyle.Render("No agents detected."))
-	} else {
-		for _, a := range agents {
-			status := successStyle.Render("[installed]")
-			agentLines = append(agentLines, fmt.Sprintf("  %s %s", a.Name, status))
+	// Message
+	var msgView string
+	if m.message != "" {
+		var style lipgloss.Style
+		switch m.messageType {
+		case "success":
+			style = successStyle
+		case "error":
+			style = errorStyle
+		default:
+			style = mutedStyle
 		}
+		msgView = "\n" + style.Render("• "+m.message)
 	}
 
-	return boxStyle.Render(lipgloss.JoinVertical(
-		lipgloss.Left,
-		titleStyle.Render("Status"),
+	// Compose
+	return lipgloss.JoinVertical(
+		lipgloss.Center,
+		logoView,
 		"",
-		"Detected Agents:",
-		strings.Join(agentLines, "\n"),
+		tagline,
+		mutedStyle.Render("v"+version),
 		"",
-		fmt.Sprintf("Policies: %d", len(m.policies)),
+		statsBox,
+		msgView,
 		"",
-		mutedStyle.Render("[esc] back"),
-	))
+		actions,
+	)
 }
 
-func (m model) viewHelp() string {
-	return boxStyle.Render(lipgloss.JoinVertical(
-		lipgloss.Left,
-		titleStyle.Render("Help"),
-		"",
-		fmt.Sprintf("%s  Run setup wizard", keyStyle.Render("i")),
-		fmt.Sprintf("%s  View/manage policies", keyStyle.Render("p")),
-		fmt.Sprintf("%s  Add new policy", keyStyle.Render("a")),
-		fmt.Sprintf("%s  View status", keyStyle.Render("s")),
-		fmt.Sprintf("%s  Show this help", keyStyle.Render("?")),
-		fmt.Sprintf("%s  Quit", keyStyle.Render("q")),
-		"",
-		mutedStyle.Render("---"),
-		"",
-		"CLI usage:",
-		mutedStyle.Render("  leash init          Setup wizard"),
-		mutedStyle.Render("  leash add \"policy\"  Add policy"),
-		mutedStyle.Render("  leash list          Show policies"),
-		mutedStyle.Render("  leash sync          Apply to agents"),
-		"",
-		mutedStyle.Render("[esc] back"),
-	))
+func (m model) renderPolicies() string {
+	title := titleStyle.Render("Policies")
+
+	if len(m.policies) == 0 {
+		empty := lipgloss.JoinVertical(
+			lipgloss.Center,
+			"",
+			mutedStyle.Render("No policies yet"),
+			"",
+			mutedStyle.Render("Press "+keyStyle.Render("a")+" to add one"),
+			"",
+		)
+		return activePanelStyle.Width(50).Render(
+			lipgloss.JoinVertical(lipgloss.Left, title, empty, m.renderPolicyHelp()),
+		)
+	}
+
+	var rows []string
+	for i, p := range m.policies {
+		prefix := "  "
+		style := baseStyle.Foreground(t.secondary)
+
+		if i == m.selectedPolicy {
+			prefix = accentStyle.Render("▸ ")
+			style = selectedStyle
+		}
+
+		// Show builtin indicator
+		indicator := ""
+		if builtin.Find(p) != nil {
+			indicator = mutedStyle.Render(" ⚡")
+		}
+
+		rows = append(rows, prefix+style.Render(p)+indicator)
+	}
+
+	list := strings.Join(rows, "\n")
+
+	return activePanelStyle.Width(60).Render(
+		lipgloss.JoinVertical(lipgloss.Left,
+			title,
+			"",
+			list,
+			"",
+			m.renderPolicyHelp(),
+		),
+	)
+}
+
+func (m model) renderPolicyHelp() string {
+	return helpKeyStyle.Render(
+		keyStyle.Render("↑↓") + " navigate  " +
+			keyStyle.Render("a") + " add  " +
+			keyStyle.Render("d") + " delete  " +
+			keyStyle.Render("esc") + " back",
+	)
+}
+
+func (m model) renderAgents() string {
+	title := titleStyle.Render("Agents")
+
+	if len(m.agents) == 0 {
+		empty := lipgloss.JoinVertical(
+			lipgloss.Center,
+			"",
+			mutedStyle.Render("No agents detected"),
+			"",
+			mutedStyle.Render("Install Claude Code, Cursor, or OpenCode"),
+			"",
+		)
+		return activePanelStyle.Width(50).Render(
+			lipgloss.JoinVertical(lipgloss.Left, title, empty, m.renderAgentHelp()),
+		)
+	}
+
+	var rows []string
+	for i, a := range m.agents {
+		prefix := "  "
+		style := baseStyle.Foreground(t.secondary)
+
+		if i == m.selectedAgent {
+			prefix = accentStyle.Render("▸ ")
+			style = selectedStyle
+		}
+
+		status := successStyle.Render("●")
+		rows = append(rows, prefix+style.Render(a.Name)+" "+status)
+	}
+
+	list := strings.Join(rows, "\n")
+
+	return activePanelStyle.Width(50).Render(
+		lipgloss.JoinVertical(lipgloss.Left,
+			title,
+			"",
+			list,
+			"",
+			m.renderAgentHelp(),
+		),
+	)
+}
+
+func (m model) renderAgentHelp() string {
+	return helpKeyStyle.Render(
+		keyStyle.Render("↑↓") + " navigate  " +
+			keyStyle.Render("enter") + " sync  " +
+			keyStyle.Render("esc") + " back",
+	)
+}
+
+func (m model) renderAddPolicy() string {
+	title := titleStyle.Render("Add Policy")
+
+	examples := mutedStyle.Render(`Examples:
+  no lodash
+  protect .env files
+  prefer pnpm over npm
+  don't delete tests`)
+
+	return activePanelStyle.Width(50).Render(
+		lipgloss.JoinVertical(lipgloss.Left,
+			title,
+			"",
+			"What should be restricted?",
+			"",
+			m.textInput.View(),
+			"",
+			examples,
+			"",
+			helpKeyStyle.Render(keyStyle.Render("enter")+" add  "+keyStyle.Render("esc")+" cancel"),
+		),
+	)
+}
+
+func (m model) renderCompiling() string {
+	return panelStyle.Width(40).Align(lipgloss.Center).Render(
+		lipgloss.JoinVertical(lipgloss.Center,
+			"",
+			m.spinner.View()+" Compiling...",
+			"",
+		),
+	)
+}
+
+func (m model) renderHelp() string {
+	title := titleStyle.Render("Keyboard Shortcuts")
+
+	shortcuts := `
+  Navigation
+  ` + keyStyle.Render("1") + ` / ` + keyStyle.Render("p") + `     Policies
+  ` + keyStyle.Render("2") + ` / ` + keyStyle.Render("g") + `     Agents
+  ` + keyStyle.Render("esc") + `         Back / Dashboard
+  ` + keyStyle.Render("?") + `           Toggle help
+  ` + keyStyle.Render("q") + `           Quit
+
+  Actions
+  ` + keyStyle.Render("a") + `           Add policy
+  ` + keyStyle.Render("i") + `           Initialize .leash
+  ` + keyStyle.Render("s") + `           Sync to all agents
+  ` + keyStyle.Render("d") + `           Delete selected
+
+  List Navigation
+  ` + keyStyle.Render("j") + ` / ` + keyStyle.Render("↓") + `      Move down
+  ` + keyStyle.Render("k") + ` / ` + keyStyle.Render("↑") + `      Move up
+  ` + keyStyle.Render("enter") + `       Select / Confirm`
+
+	cli := mutedStyle.Render(`
+  CLI: leash add "policy"
+       leash sync
+       leash --help`)
+
+	return activePanelStyle.Width(45).Render(
+		lipgloss.JoinVertical(lipgloss.Left,
+			title,
+			shortcuts,
+			"",
+			cli,
+			"",
+			helpKeyStyle.Render(keyStyle.Render("esc")+" close"),
+		),
+	)
 }
 
 // Messages
@@ -431,48 +650,61 @@ type policyCompiledMsg struct {
 	err    error
 }
 
-type initWizardDoneMsg struct {
-	result *tui.InitResult
-	err    error
+type initDoneMsg struct {
+	err error
+}
+
+type syncDoneMsg struct {
+	count int
+	err   error
 }
 
 // Commands
 func compilePolicy(policy string) tea.Cmd {
 	return func() tea.Msg {
-		// Check builtins first
-		if b := builtin.Find(policy); b != nil {
-			return policyCompiledMsg{policy: policy, err: nil}
+		// Check builtins first (instant)
+		if builtin.Find(policy) != nil {
+			return policyCompiledMsg{policy: policy}
 		}
-
-		// TODO: LLM compilation for non-builtins
-		// For now, just accept all policies
-		return policyCompiledMsg{policy: policy, err: nil}
+		// For now, accept all policies
+		// TODO: LLM compilation via engine bridge
+		return policyCompiledMsg{policy: policy}
 	}
 }
 
-func runInitWizard() tea.Msg {
-	result, err := tui.RunInitWizard()
-	if err != nil {
-		return initWizardDoneMsg{err: err}
-	}
-
-	// Create config if requested
-	if result.CreateConfig && !config.Exists() {
-		if err := config.Create(); err != nil {
-			return initWizardDoneMsg{err: err}
+func runInit(m *model) tea.Cmd {
+	return func() tea.Msg {
+		if !config.Exists() {
+			if err := config.Create(); err != nil {
+				return initDoneMsg{err: err}
+			}
 		}
+		return initDoneMsg{}
 	}
-
-	return initWizardDoneMsg{result: result}
 }
+
+func runSync(m *model) tea.Cmd {
+	return func() tea.Msg {
+		agents := agent.DetectInstalled()
+		count := 0
+		for _, a := range agents {
+			if err := agent.Install(a.ID); err == nil {
+				count++
+			}
+		}
+		return syncDoneMsg{count: count}
+	}
+}
+
+// CLI
 
 func main() {
 	args := os.Args[1:]
 
-	// No args = launch TUI
+	// No args = TUI
 	if len(args) == 0 {
 		p := tea.NewProgram(
-			initialModel(),
+			newModel(),
 			tea.WithAltScreen(),
 		)
 		if _, err := p.Run(); err != nil {
@@ -482,81 +714,70 @@ func main() {
 		return
 	}
 
-	// Handle CLI commands
+	// CLI commands
 	switch args[0] {
 	case "--version", "-v":
 		fmt.Printf("leash v%s\n", version)
-		return
+
 	case "--help", "-h", "help":
 		printHelp()
-		return
+
 	case "init":
-		// Run init wizard directly
-		result, err := tui.RunInitWizard()
-		if err != nil {
+		if config.Exists() {
+			fmt.Println("• .leash already exists")
+			return
+		}
+		if err := config.Create(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		if result.Cancelled {
-			return
-		}
-		if result.CreateConfig {
-			if err := config.Create(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error creating config: %v\n", err)
-				os.Exit(1)
-			}
-			fmt.Println("+ Created .leash with default policies")
-		}
-		fmt.Printf("+ Selected agents: %v\n", result.Agents)
-		return
+		fmt.Println("✓ Created .leash")
+
 	case "add":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "Usage: leash add \"policy\"")
 			os.Exit(1)
 		}
-		restriction := strings.Join(args[1:], " ")
+		policy := strings.Join(args[1:], " ")
 
-		// Check if it's a builtin first (fast path)
-		if b := builtin.Find(restriction); b != nil {
-			if err := config.AddPolicy(restriction); err != nil {
+		// Builtin = instant
+		if builtin.Find(policy) != nil {
+			if err := config.AddPolicy(policy); err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}
-			fmt.Printf("+ Added: %s (builtin)\n", restriction)
+			fmt.Printf("✓ Added: %s (builtin)\n", policy)
 			return
 		}
 
-		// Use TypeScript engine for LLM compilation
+		// LLM compilation
 		bridge, err := engine.NewBridge()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		fmt.Println("Compiling policy...")
-		result, err := bridge.Compile(restriction)
+		fmt.Println("Compiling...")
+		result, err := bridge.Compile(policy)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
 		if !result.Success {
-			fmt.Fprintf(os.Stderr, "x %s\n", result.Error)
+			fmt.Fprintf(os.Stderr, "✗ %s\n", result.Error)
 			os.Exit(1)
 		}
 
-		if err := config.AddPolicy(restriction); err != nil {
+		if err := config.AddPolicy(policy); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("+ Added: %s\n", restriction)
-		if result.Description != "" {
-			fmt.Printf("  %s\n", result.Description)
-		}
-		return
+		fmt.Printf("✓ Added: %s\n", policy)
+
 	case "list":
 		if !config.Exists() {
-			fmt.Println("No .leash file found. Run 'leash init' to create one.")
+			fmt.Println("No .leash file. Run: leash init")
 			return
 		}
 		path, _ := config.Find()
@@ -566,31 +787,54 @@ func main() {
 			os.Exit(1)
 		}
 		if len(cfg.Policies) == 0 {
-			fmt.Println("No policies configured.")
+			fmt.Println("No policies")
 			return
 		}
-		fmt.Println("Policies:")
-		for i, p := range cfg.Policies {
-			indicator := "  "
-			if b := builtin.Find(p); b != nil {
-				indicator = "* "
+		for _, p := range cfg.Policies {
+			mark := " "
+			if builtin.Find(p) != nil {
+				mark = "⚡"
 			}
-			fmt.Printf("  %d. %s%s\n", i+1, indicator, p)
+			fmt.Printf(" %s %s\n", mark, p)
 		}
-		fmt.Println("\n* = builtin pattern")
-		return
+
+	case "status":
+		agents := agent.DetectInstalled()
+		fmt.Printf("Agents: %d detected\n", len(agents))
+		for _, a := range agents {
+			fmt.Printf("  ● %s\n", a.Name)
+		}
+		if config.Exists() {
+			path, _ := config.Find()
+			cfg, _ := config.Load(path)
+			fmt.Printf("\nPolicies: %d\n", len(cfg.Policies))
+		}
+
+	case "sync":
+		agents := agent.DetectInstalled()
+		if len(agents) == 0 {
+			fmt.Println("No agents detected")
+			return
+		}
+		for _, a := range agents {
+			if err := agent.Install(a.ID); err != nil {
+				fmt.Fprintf(os.Stderr, "✗ %s: %v\n", a.Name, err)
+			} else {
+				fmt.Printf("✓ %s\n", a.Name)
+			}
+		}
+
 	case "install":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "Usage: leash install <agent>")
-			fmt.Fprintln(os.Stderr, "\nAgents: cc, oc, cursor, windsurf, aider")
 			os.Exit(1)
 		}
 		if err := agent.Install(args[1]); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("+ Installed hooks for %s\n", args[1])
-		return
+		fmt.Printf("✓ Installed: %s\n", args[1])
+
 	case "uninstall":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "Usage: leash uninstall <agent>")
@@ -600,104 +844,55 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("+ Uninstalled hooks for %s\n", args[1])
-		return
-	case "sync":
-		// Sync policies to all or specific agent
-		var agents []string
-		if len(args) > 1 {
-			agents = []string{args[1]}
-		} else {
-			// Sync to all detected agents
-			for _, a := range agent.DetectInstalled() {
-				agents = append(agents, a.ID)
-			}
-		}
-		if len(agents) == 0 {
-			fmt.Println("No agents detected. Install an agent first.")
-			return
-		}
-		for _, agentID := range agents {
-			if err := agent.Install(agentID); err != nil {
-				fmt.Fprintf(os.Stderr, "Error syncing to %s: %v\n", agentID, err)
-			} else {
-				fmt.Printf("+ Synced to %s\n", agentID)
-			}
-		}
-		return
-	case "status":
-		fmt.Println("Detected Agents:")
-		detected := agent.DetectInstalled()
-		if len(detected) == 0 {
-			fmt.Println("  (none)")
-		} else {
-			for _, a := range detected {
-				fmt.Printf("  %s [installed]\n", a.Name)
-			}
-		}
-		fmt.Println()
-		if config.Exists() {
-			path, _ := config.Find()
-			cfg, _ := config.Load(path)
-			fmt.Printf("Policies: %d\n", len(cfg.Policies))
-		} else {
-			fmt.Println("No .leash config found")
-		}
-		return
+		fmt.Printf("✓ Uninstalled: %s\n", args[1])
+
 	case "explain":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "Usage: leash explain \"policy\"")
 			os.Exit(1)
 		}
-		restriction := strings.Join(args[1:], " ")
-
-		// Use TypeScript engine for explain
 		bridge, err := engine.NewBridge()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-
-		if err := bridge.Explain(restriction); err != nil {
+		if err := bridge.Explain(strings.Join(args[1:], " ")); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		return
+
 	case "audit":
-		// Use TypeScript engine for audit
 		bridge, err := engine.NewBridge()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-
 		if err := bridge.Audit(args[1:]); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		return
+
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", args[0])
-		fmt.Fprintln(os.Stderr, "Run 'leash --help' for usage.")
+		fmt.Fprintf(os.Stderr, "Unknown: %s\n", args[0])
+		fmt.Fprintln(os.Stderr, "Run: leash --help")
 		os.Exit(1)
 	}
 }
 
 func printHelp() {
-	fmt.Println(`
-leash - sudo for AI agents
+	fmt.Print(`
+  ` + logoSmall + `
+  
+  sudo for AI agents
 
 USAGE
-  leash                     Interactive dashboard
-  leash init                Setup wizard
-  leash add "policy"        Add policy  
-  leash list                Show policies
-  leash explain "policy"    Preview policy without installing
-  leash sync [agent]        Apply policies to agents
-  leash install <agent>     Install agent hooks
-  leash uninstall <agent>   Remove agent hooks
-  leash status              Show detected agents
-  leash audit [--tail]      View audit log
+  leash                     Dashboard (TUI)
+  leash add "policy"        Add a policy
+  leash list                List policies
+  leash sync                Sync to all agents
+  leash status              Show status
+  leash install <agent>     Install hooks
+  leash explain "policy"    Preview policy
 
 AGENTS
   cc, claude-code    Claude Code
@@ -707,15 +902,9 @@ AGENTS
   aider              Aider
 
 EXAMPLES
-  leash add "protect .env"
-  leash add "don't delete test files"
   leash add "no lodash"
-  leash explain "prefer pnpm"
-  leash install cc
+  leash add "protect .env"
   leash sync
 
-ENVIRONMENT
-  GEMINI_API_KEY     For custom policy compilation
-                     Free: https://aistudio.google.com/apikey
 `)
 }
