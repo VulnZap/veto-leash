@@ -7,13 +7,15 @@
     "url": "https://github.com/VulnZap/veto"
   },
   "scripts": {
-    "build": "pnpm -r build",
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm -r --filter './packages/*' build",
+    "test": "pnpm -r --filter './packages/*' test",
+    "typecheck": "pnpm -r --filter './packages/*' typecheck",
     "dev:cli": "pnpm --filter veto-cli dev",
     "dev:sdk": "pnpm --filter veto-sdk dev",
+    "dev:web": "pnpm --filter @veto/web dev",
     "build:cli": "pnpm --filter veto-cli build",
-    "build:sdk": "pnpm --filter veto-sdk build"
+    "build:sdk": "pnpm --filter veto-sdk build",
+    "build:web": "pnpm --filter @veto/web build"
   },
   "devDependencies": {
     "typescript": "^5.7.0"
