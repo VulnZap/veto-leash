@@ -15,17 +15,17 @@ Your AI agent has root access to your codebase. You have... vibes.
 echo "no lodash
 no any types" > .leash
 
-leash init  # Auto-detects agents, installs hooks
+leash   # Interactive dashboard
 ```
 
 Now every action is validated with **AST-level precision**. Zero false positives. Zero config.
 
-## What's New in 1.0
+## What's New in 2.0
 
-- **🎯 AST Validation** - Tree-sitter parsing means `// import lodash` in comments is ignored
-- **📄 Simple `.leash` format** - One rule per line, no YAML boilerplate
-- **🔍 Auto-detection** - `leash init` finds and configures all your AI agents
-- **⚡ Instant** - 95%+ policies use built-in rules (no LLM call needed)
+- **Native Go TUI** - Beautiful interactive dashboard built with Bubble Tea
+- **4.5MB binary** - Instant startup, no Node.js required at runtime
+- **Cross-platform** - Native binaries for macOS, Linux, Windows (arm64 + amd64)
+- **Hybrid engine** - Go for speed, TypeScript for LLM compilation + AST validation
 
 ## The Problem
 
@@ -39,10 +39,10 @@ veto-leash uses **AST parsing** for surgical precision:
 
 | Code                     | Regex Result | AST Result                 |
 | ------------------------ | ------------ | -------------------------- |
-| `// import lodash`       | ❌ BLOCKED   | ✅ ALLOWED (comment)       |
-| `"use any type"`         | ❌ BLOCKED   | ✅ ALLOWED (string)        |
-| `const anyValue = 5`     | ❌ BLOCKED   | ✅ ALLOWED (variable name) |
-| `import _ from 'lodash'` | ✅ BLOCKED   | ✅ BLOCKED (correct)       |
+| `// import lodash`       | BLOCKED      | ALLOWED (comment)          |
+| `"use any type"`         | BLOCKED      | ALLOWED (string)           |
+| `const anyValue = 5`     | BLOCKED      | ALLOWED (variable name)    |
+| `import _ from 'lodash'` | BLOCKED      | BLOCKED (correct)          |
 
 **This precision is our moat.** No other tool achieves zero false positives.
 
@@ -52,20 +52,28 @@ veto-leash uses **AST parsing** for surgical precision:
 # Install globally
 npm install -g veto-leash
 
-# Create a simple .leash file
+# Create policies
 echo "no lodash
 no any types
-no console.log" > .leash
+prefer pnpm" > .leash
 
-# One command setup
-leash init
+# Launch the dashboard
+leash
 ```
 
-That's it. `leash init` will:
+The interactive TUI lets you:
+- Add and manage policies
+- Install hooks for detected agents
+- Monitor enforcement in real-time
+- View audit logs
 
-1. Detect installed agents (Claude Code, Cursor, OpenCode, Windsurf)
-2. Install native hooks for each
-3. Your policies are now enforced
+Or use CLI commands directly:
+
+```bash
+leash init              # Auto-detect agents, install hooks
+leash add "no axios"    # Add a policy
+leash sync              # Apply to all agents
+```
 
 ## Simple `.leash` Format
 
@@ -75,11 +83,12 @@ no lodash
 no any types - enforces strict TypeScript
 no console.log
 prefer pnpm over npm
+protect .env files
 ```
 
 Lines starting with `#` are comments. Optional reasons after `-`.
 
-## Built-in AST Rules
+## Built-in Rules
 
 These work **instantly** with zero LLM calls:
 
@@ -93,30 +102,57 @@ These work **instantly** with zero LLM calls:
 | `no innerhtml`        | innerHTML, dangerouslySetInnerHTML         |
 | `no debugger`         | debugger statements                        |
 | `no var`              | var declarations                           |
+| `prefer pnpm`         | npm/yarn commands blocked                  |
+| `protect .env`        | Environment file modifications blocked     |
+
+50+ built-in patterns cover most common policies.
 
 ## Native Agent Support
 
-| Agent           | How It Works                         | Status       |
-| --------------- | ------------------------------------ | ------------ |
-| **Claude Code** | PreToolUse hooks with AST validation | ✅ Full      |
-| **Cursor**      | hooks.json + beforeShellExecution    | ✅ Full      |
-| **OpenCode**    | permission.bash deny rules           | ✅ Full      |
-| **Windsurf**    | Cascade pre_write_code hooks         | ✅ Full      |
-| **Aider**       | .aider.conf.yml read-only            | ✅ Partial   |
-| **Any CLI**     | Wrapper mode (PATH hijacking)        | ✅ Universal |
+| Agent           | How It Works                         | Status     |
+| --------------- | ------------------------------------ | ---------- |
+| **Claude Code** | PreToolUse hooks with AST validation | Full       |
+| **OpenCode**    | AGENTS.md injection                  | Full       |
+| **Cursor**      | rules/ directory integration         | Full       |
+| **Windsurf**    | Cascade rules integration            | Full       |
+| **Aider**       | .aider.conf.yml configuration        | Full       |
 
 ## Commands
 
 ```
-leash init                        Auto-detect agents, install hooks
-leash sync [agent]                Apply .leash policies to agents
-leash add "<rule>"                Add a policy
-leash install <agent>             Install hooks for specific agent
-leash explain "<rule>"            Preview what a rule catches
-leash watch "<rule>"              Background file protection
-leash audit [--tail]              View enforcement log
-leash status                      Show active sessions
+leash                     Interactive dashboard
+leash init                Auto-detect agents, install hooks
+leash add "<policy>"      Add a policy
+leash list                Show current policies
+leash explain "<policy>"  Preview what a policy catches
+leash sync [agent]        Apply policies to agents
+leash install <agent>     Install hooks for specific agent
+leash uninstall <agent>   Remove agent hooks
+leash status              Show detected agents
+leash audit [--tail]      View enforcement log
 ```
+
+**Agent shortcuts:** `cc` (Claude Code), `oc` (OpenCode), `cursor`, `windsurf`, `aider`
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    leash (Go, 4.5MB)                    │
+├─────────────────────────────────────────────────────────┤
+│  TUI Dashboard          │  Fast Commands               │
+│  - Policy management    │  - list, status, sync        │
+│  - Agent installation   │  - install, uninstall        │
+│  - Real-time monitoring │  - Pattern matching          │
+├─────────────────────────┴───────────────────────────────┤
+│              TypeScript Engine (when needed)            │
+│  - LLM policy compilation (custom rules)                │
+│  - AST validation (Tree-sitter)                         │
+│  - 243 tests                                            │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Key insight**: 95%+ of policies use built-in rules (pure Go, instant). LLM compilation only runs for custom rules.
 
 ## How It Works
 
@@ -130,16 +166,11 @@ User: "no lodash"
          ↓
 ┌─────────────────────────────────────────┐
 │  2. Runtime: Write/Edit intercepted     │
-│     → Regex pre-filter: contains        │
-│       "lodash"? Yes → continue          │
+│     → Regex pre-filter: "lodash"?       │
 │     → AST parse (5ms, cached)           │
-│     → Query: import_statement with      │
-│       source matching "lodash"          │
 │     → BLOCKED with line/column          │
 └─────────────────────────────────────────┘
 ```
-
-**Key insight**: Regex pre-filter skips 95%+ of files instantly. AST parsing only runs when needed.
 
 ## Environment Variables
 
@@ -153,14 +184,14 @@ Get a free API key: https://aistudio.google.com/apikey
 
 1. **Surgeon-level precision** - AST parsing = zero false positives
 2. **Invisible until needed** - Auto-detection, background enforcement
-3. **Steroid, not weight** - Makes AI agents _better_, not slower
-4. **Natural language policies** - `no lodash` not `{ "rule": "no-import", "pattern": "^lodash" }`
+3. **Native performance** - Go binary, instant startup
+4. **Natural language** - `no lodash` not `{ "rule": "no-import", "pattern": "^lodash" }`
 
 ## Test Suite
 
 ```
-229 tests passing
-├── 41 AST validation tests
+243 tests passing
+├── 77 AST validation tests
 ├── 93 content matching tests
 ├── 41 command interception tests
 ├── 17 pattern matcher tests

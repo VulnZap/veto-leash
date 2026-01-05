@@ -1,17 +1,23 @@
 {
   "name": "veto-leash",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "Semantic permissions for AI coding agents — sudo for AI agents",
   "main": "./dist/cli.js",
   "bin": {
-    "leash": "./dist/cli.js"
+    "leash": "./bin/leash.js"
   },
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "bin",
+    "go/leash-*",
+    "scripts/postinstall.js"
   ],
   "scripts": {
     "build": "tsc && chmod +x dist/cli.js",
+    "build:go": "cd go && make build-all",
+    "build:all": "pnpm build && pnpm build:go",
+    "postinstall": "node scripts/postinstall.js",
     "dev": "tsx src/cli.ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -22,7 +28,7 @@
     "release:patch": "npm version patch && pnpm release",
     "release:minor": "npm version minor && pnpm release",
     "release:major": "npm version major && pnpm release",
-    "prepublishOnly": "pnpm run ci"
+    "prepublishOnly": "pnpm run build:all && pnpm run ci"
   },
   "dependencies": {
     "@google/genai": "^1.34.0",

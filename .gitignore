@@ -3,3 +3,11 @@ dist/
 *.log
 .env
 .DS_Store
+
+# Go binaries
+/leash
+/go/leash-*
+
+# Native binary in bin (leash.js is tracked)
+bin/leash
+bin/leash.exe
