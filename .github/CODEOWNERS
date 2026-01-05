@@ -1,0 +1,14 @@
+# Default owners for everything
+* @plawlost
+
+# SDK owned by SDK team
+/packages/sdk/ @plawlost @anirudhp26
+
+# CLI owned by CLI team
+/packages/cli/ @plawlost
+
+# Web owned by web team
+/apps/web/ @plawlost
+
+# CI/Infra requires admin review
+/.github/ @plawlost
