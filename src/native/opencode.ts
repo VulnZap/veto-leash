@@ -1,13 +1,16 @@
 // src/native/opencode.ts
 // OpenCode native permission integration
 // Generates permission rules for OpenCode's opencode.json config
+// Also installs native plugin for seamless tool interception
 
-import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync } from 'fs';
-import { join } from 'path';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, copyFileSync } from 'fs';
+import { join, dirname } from 'path';
 import { homedir } from 'os';
+import { fileURLToPath } from 'url';
 import type { Policy } from '../types.js';
 import { COLORS, SYMBOLS } from '../ui/colors.js';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const OPENCODE_GLOBAL_CONFIG = join(
   homedir(),
   '.config',
@@ -15,6 +18,7 @@ const OPENCODE_GLOBAL_CONFIG = join(
   'opencode.json'
 );
 const OPENCODE_PROJECT_CONFIG = 'opencode.json';
+const OPENCODE_PLUGIN_DIR = join(homedir(), '.config', 'opencode', 'plugin');
 const VETO_LEASH_CONFIG_DIR = join(homedir(), '.config', 'veto-leash');
 const POLICIES_FILE = join(VETO_LEASH_CONFIG_DIR, 'policies.json');
 
@@ -116,7 +120,7 @@ function policyToOpenCodeRules(policy: Policy): Record<string, string> {
 }
 
 /**
- * Install veto-leash permissions into OpenCode config
+ * Install veto-leash as OpenCode plugin + permission rules
  */
 export async function installOpenCodePermissions(
   target: 'global' | 'project' = 'project'
@@ -125,21 +129,39 @@ export async function installOpenCodePermissions(
     `\n${COLORS.info}Installing veto-leash for OpenCode (${target})...${COLORS.reset}\n`
   );
 
-  // Load existing policies
+  // === Step 1: Install native plugin ===
+  try {
+    mkdirSync(OPENCODE_PLUGIN_DIR, { recursive: true });
+    
+    // Copy the plugin file
+    const pluginSrc = join(dirname(__dirname), 'opencode-plugin', 'veto-leash.ts');
+    const pluginDest = join(OPENCODE_PLUGIN_DIR, 'veto-leash.ts');
+    
+    // Try to copy from source, fall back to generating inline
+    if (existsSync(pluginSrc)) {
+      copyFileSync(pluginSrc, pluginDest);
+    } else {
+      // Generate the plugin inline (for npm installs where src isn't available)
+      writeFileSync(pluginDest, generatePluginSource());
+    }
+    console.log(`  ${COLORS.success}${SYMBOLS.success}${COLORS.reset} Installed plugin: ${pluginDest}`);
+  } catch (err) {
+    console.log(`  ${COLORS.warning}${SYMBOLS.warning}${COLORS.reset} Could not install plugin: ${(err as Error).message}`);
+  }
+
+  // === Step 2: Load existing policies ===
   const storedPolicies = loadStoredPolicies();
   if (storedPolicies.policies.length === 0) {
-    console.log(
-      `${COLORS.warning}${SYMBOLS.warning} No policies found. Add policies first:${COLORS.reset}`
-    );
+    console.log(`\n${COLORS.success}${SYMBOLS.success} veto-leash plugin installed for OpenCode${COLORS.reset}\n`);
+    console.log(`${COLORS.dim}Add policies with:${COLORS.reset}`);
     console.log(`  ${COLORS.dim}leash add "don't delete test files"${COLORS.reset}\n`);
     return;
   }
 
-  // Determine config file path
+  // === Step 3: Update permission rules (belt-and-suspenders) ===
   const configPath =
     target === 'global' ? OPENCODE_GLOBAL_CONFIG : OPENCODE_PROJECT_CONFIG;
 
-  // Load existing config
   let config: OpenCodeConfig = {
     $schema: 'https://opencode.ai/config.json',
   };
@@ -180,15 +202,85 @@ export async function installOpenCodePermissions(
   }
   
   writeFileSync(configPath, JSON.stringify(config, null, 2));
-  console.log(
-    `  ${COLORS.success}${SYMBOLS.success}${COLORS.reset} Updated: ${configPath}`
-  );
+  console.log(`  ${COLORS.success}${SYMBOLS.success}${COLORS.reset} Updated: ${configPath}`);
 
   console.log(
-    `\n${COLORS.success}${SYMBOLS.success} veto-leash permissions installed for OpenCode${COLORS.reset}\n`
+    `\n${COLORS.success}${SYMBOLS.success} veto-leash installed for OpenCode${COLORS.reset}\n`
   );
-  console.log(`${COLORS.dim}Policies are now enforced via OpenCode's native permission system.${COLORS.reset}`);
-  console.log(`${COLORS.dim}OpenCode will deny matching commands automatically.${COLORS.reset}\n`);
+  console.log(`${COLORS.dim}Policies enforced via:${COLORS.reset}`);
+  console.log(`  ${COLORS.dim}1. Native plugin (tool.execute.before hook)${COLORS.reset}`);
+  console.log(`  ${COLORS.dim}2. Permission rules (bash deny patterns)${COLORS.reset}\n`);
+  console.log(`${COLORS.dim}Restart OpenCode to activate.${COLORS.reset}\n`);
+}
+
+/**
+ * Generate plugin source for npm installs where src directory isn't available
+ */
+function generatePluginSource(): string {
+  return `/**
+ * veto-leash OpenCode Plugin
+ * Auto-generated - do not edit directly
+ */
+import { existsSync, readFileSync } from "fs"
+import { join } from "path"
+import { homedir } from "os"
+
+const POLICIES_FILE = join(homedir(), ".config", "veto-leash", "policies.json")
+
+function loadPolicies() {
+  try {
+    if (existsSync(POLICIES_FILE)) {
+      const data = JSON.parse(readFileSync(POLICIES_FILE, "utf-8"))
+      return data.policies?.map((p) => p.policy) || []
+    }
+  } catch {}
+  return []
+}
+
+function matchGlob(text, pattern) {
+  const normalized = text.toLowerCase()
+  const pat = pattern.toLowerCase()
+  if (pat === "*") return true
+  if (!pat.includes("*")) return normalized === pat || normalized.startsWith(pat + " ")
+  const regex = new RegExp("^" + pat.replace(/\\*/g, ".*").replace(/\\?/g, ".") + "$")
+  return regex.test(normalized)
+}
+
+function checkCommand(command, policies) {
+  for (const policy of policies) {
+    if (!policy.commandRules) continue
+    for (const rule of policy.commandRules) {
+      for (const pattern of rule.block) {
+        if (matchGlob(command, pattern)) {
+          return { blocked: true, reason: rule.reason, suggest: rule.suggest }
+        }
+      }
+    }
+  }
+  return { blocked: false }
+}
+
+export const VetoLeash = async ({ client }) => {
+  const policies = loadPolicies()
+  if (policies.length === 0) return {}
+  
+  await client.app.log({ service: "veto-leash", level: "info", message: \`Loaded \${policies.length} policies\` })
+  
+  return {
+    "tool.execute.before": async (input, output) => {
+      if (input.tool === "bash" && output.args.command) {
+        const result = checkCommand(String(output.args.command), policies)
+        if (result.blocked) {
+          await client.tui.showToast({ message: \`Blocked: \${result.reason}\`, variant: "error" })
+          throw new Error(\`veto-leash: \${result.reason}\${result.suggest ? ". Try: " + result.suggest : ""}\`)
+        }
+      }
+    },
+  }
+}
+
+export default VetoLeash
+`;
 }
 
 /**
