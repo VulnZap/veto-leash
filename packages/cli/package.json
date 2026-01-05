@@ -1,6 +1,6 @@
 {
-  "name": "@veto/cli",
-  "version": "3.0.0",
+  "name": "veto-cli",
+  "version": "3.1.0",
   "description": "The permission layer for AI agents - sudo for AI",
   "main": "./dist/cli.js",
   "bin": {
@@ -11,6 +11,7 @@
     "dist",
     "bin",
     "go/veto-*",
+    "languages",
     "scripts/postinstall.js"
   ],
   "scripts": {
@@ -44,10 +45,6 @@
   "engines": {
     "node": ">=20"
   },
-  "publishConfig": {
-    "name": "veto-cli",
-    "access": "public"
-  },
   "keywords": [
     "ai",
     "agents",
@@ -57,6 +54,7 @@
     "opencode",
     "cursor",
     "windsurf",
+    "aider",
     "veto",
     "cli"
   ],
@@ -66,5 +64,9 @@
     "type": "git",
     "url": "https://github.com/VulnZap/veto",
     "directory": "packages/cli"
+  },
+  "homepage": "https://veto.run",
+  "bugs": {
+    "url": "https://github.com/VulnZap/veto/issues"
   }
 }

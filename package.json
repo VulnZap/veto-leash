@@ -1,5 +1,5 @@
 {
-  "name": "veto",
+  "name": "veto-monorepo",
   "private": true,
   "description": "The permission layer for AI agents",
   "repository": {
@@ -10,10 +10,10 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "dev:cli": "pnpm --filter @veto/cli dev",
-    "dev:sdk": "pnpm --filter veto dev",
-    "build:cli": "pnpm --filter @veto/cli build",
-    "build:sdk": "pnpm --filter veto build"
+    "dev:cli": "pnpm --filter veto-cli dev",
+    "dev:sdk": "pnpm --filter veto-sdk dev",
+    "build:cli": "pnpm --filter veto-cli build",
+    "build:sdk": "pnpm --filter veto-sdk build"
   },
   "devDependencies": {
     "typescript": "^5.7.0"
@@ -24,5 +24,6 @@
   },
   "packageManager": "pnpm@9.15.0",
   "license": "Apache-2.0",
-  "author": "Plaw, Inc."
+  "author": "Plaw, Inc.",
+  "homepage": "https://veto.run"
 }

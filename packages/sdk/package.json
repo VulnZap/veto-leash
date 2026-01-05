@@ -1,5 +1,5 @@
 {
-  "name": "veto",
+  "name": "veto-sdk",
   "version": "1.0.0",
   "description": "Guardrails for AI agent tool calls - intercept, validate, and control",
   "main": "dist/index.js",
@@ -13,8 +13,7 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "benchmark": "node dist/benchmark/cli.js",
-    "benchmark:dev": "tsx src/benchmark/cli.ts",
-    "prepublishOnly": "npm run build"
+    "benchmark:dev": "tsx src/benchmark/cli.ts"
   },
   "keywords": [
     "ai",
@@ -26,6 +25,7 @@
     "openai",
     "anthropic",
     "gemini",
+    "claude",
     "veto"
   ],
   "author": "Plaw, Inc.",
@@ -82,5 +82,9 @@
     "type": "git",
     "url": "https://github.com/VulnZap/veto",
     "directory": "packages/sdk"
+  },
+  "homepage": "https://veto.run",
+  "bugs": {
+    "url": "https://github.com/VulnZap/veto/issues"
   }
 }

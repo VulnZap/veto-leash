@@ -4,9 +4,9 @@
 
 Veto gives you control over what AI agents can and cannot do. Whether you're building agentic applications or using AI coding assistants, Veto ensures they operate within boundaries you define.
 
-```
-npm install veto        # SDK - for building agentic apps
-npm install -g veto-cli # CLI - for AI coding assistants
+```bash
+npm install veto-sdk      # SDK for building agentic apps
+npm install -g veto-cli   # CLI for AI coding assistants
 ```
 
 ## The Problem
@@ -24,12 +24,12 @@ Without guardrails, you're trusting the model to always do the right thing.
 
 Veto intercepts AI agent actions before they execute and validates them against your rules.
 
-### For Developers Building Agents (SDK)
+### For Developers Building Agents (`veto-sdk`)
 
 Wrap your tools with Veto. Validation happens automatically.
 
 ```typescript
-import { Veto, toOpenAITools } from 'veto';
+import { Veto, toOpenAITools } from 'veto-sdk';
 
 const veto = await Veto.init();
 const { definitions, implementations } = veto.wrapTools([
@@ -69,7 +69,7 @@ rules:
     action: block
 ```
 
-### For Teams Using AI Coding Assistants (CLI)
+### For Teams Using AI Coding Assistants (`veto-cli`)
 
 Control what Claude, Cursor, Windsurf, and other AI coding tools can do in your codebase.
 
@@ -103,7 +103,7 @@ veto
 
 | Package | Description | Install |
 |---------|-------------|---------|
-| [`veto`](./packages/sdk) | SDK for building agentic applications with guardrails | `npm install veto` |
+| [`veto-sdk`](./packages/sdk) | SDK for building agentic applications with guardrails | `npm install veto-sdk` |
 | [`veto-cli`](./packages/cli) | CLI for controlling AI coding assistants | `npm install -g veto-cli` |
 
 ## How It Works
@@ -131,18 +131,15 @@ veto
 ### SDK
 
 ```bash
-npm install veto
-npx veto init
+npm install veto-sdk
+npx veto-sdk init
 ```
 
 ```typescript
-import { Veto } from 'veto';
+import { Veto } from 'veto-sdk';
 
 const veto = await Veto.init();
 const { definitions, implementations } = veto.wrapTools(myTools);
-
-// Use definitions with any AI provider
-// Execute via implementations - validation is automatic
 ```
 
 ### CLI
@@ -154,24 +151,22 @@ veto init
 veto
 ```
 
-Configure in `.veto`, then run `veto` to launch the control interface.
-
 ## Documentation
 
-- [SDK Documentation](./packages/sdk/README.md) - Building agentic apps
-- [CLI Documentation](./packages/cli/README.md) - Controlling AI assistants
-- [Rule Reference](./docs/rules.md) - Complete rule syntax
+- [SDK Documentation](./packages/sdk/README.md)
+- [CLI Documentation](./packages/cli/README.md)
+- [Rule Reference](./docs/rules.md)
 
 ## Why Veto?
 
-| Feature | Veto | Alternatives |
-|---------|------|--------------|
-| Zero-config defaults | Yes | No |
-| Provider agnostic | Yes | Usually locked |
-| Local-first | Yes | Cloud-dependent |
-| Real-time monitoring | Yes | Logs only |
-| Team policies | Yes | No |
-| Sub-millisecond overhead | Yes | Varies |
+| Feature | Veto |
+|---------|------|
+| Zero-config defaults | Yes |
+| Provider agnostic | OpenAI, Anthropic, Google, any |
+| Local-first | No cloud required |
+| Real-time monitoring | TUI dashboard |
+| Team policies | Sync via Veto Cloud |
+| Performance | Sub-millisecond overhead |
 
 ## License
 
