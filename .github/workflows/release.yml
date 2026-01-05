@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'sdk@*'
+      - 'cli@*'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Parse tag
+        id: tag
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          PACKAGE=$(echo $TAG | cut -d@ -f1)
+          VERSION=$(echo $TAG | cut -d@ -f2)
+          echo "package=$PACKAGE" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Releasing $PACKAGE@$VERSION"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build SDK
+        if: steps.tag.outputs.package == 'sdk'
+        run: pnpm --filter veto-sdk build
+
+      - name: Build CLI
+        if: steps.tag.outputs.package == 'cli'
+        run: |
+          pnpm --filter veto-sdk build
+          pnpm --filter veto-cli build
+
+      - name: Publish SDK
+        if: steps.tag.outputs.package == 'sdk'
+        run: pnpm --filter veto-sdk publish --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish CLI
+        if: steps.tag.outputs.package == 'cli'
+        run: pnpm --filter veto-cli publish --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: ${{ steps.tag.outputs.package }}@${{ steps.tag.outputs.version }}
+          generate_release_notes: true
