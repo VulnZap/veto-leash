@@ -1,5 +1,7 @@
 # AGENTS.md
 
+> **For strategy, positioning, and business context, see [VISION.md](./VISION.md).**
+
 ## Vision
 
 **Veto is the permission layer for AI agents.** As AI agents become more capable and autonomous, they gain the power to execute code, modify files, access networks, and interact with production systems. This creates a fundamental trust problem: how do you let AI agents be useful while preventing them from doing harm?
