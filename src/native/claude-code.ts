@@ -512,14 +512,15 @@ def output_allow():
 
 def output_deny(reason, suggest=None, line=None, match=None):
     """Output JSON to deny the action with explanation."""
-    message = f"veto-leash: BLOCKED\\n\\nReason: {reason}"
+    message = "\\n🛑 BLOCKED by veto-leash\\n"
+    message += f"\\n  Reason: {reason}"
     if line:
-        message += f"\\nLine: {line}"
+        message += f"\\n  Line: {line}"
     if match:
-        message += f"\\nMatch: {match}"
+        message += f"\\n  Match: {match}"
     if suggest:
-        message += f"\\n\\nSuggested alternative: {suggest}"
-    message += "\\n\\nThe action was blocked by a veto-leash policy. Please follow the suggested alternative or modify your approach."
+        message += f"\\n\\n💡 Suggestion: {suggest}"
+    message += "\\n\\nModify your approach to comply with the policy."
     
     print(json.dumps({
         "hookSpecificOutput": {

@@ -102,10 +102,12 @@ function outputAllow(): void {
 }
 
 function outputDeny(reason: string, opts?: { suggest?: string; line?: number; match?: string }): void {
-  let message = `veto-leash: BLOCKED - ${reason}`;
-  if (opts?.line) message += ` (line ${opts.line})`;
-  if (opts?.match) message += ` [${opts.match}]`;
-  if (opts?.suggest) message += `. Use: ${opts.suggest}`;
+  let message = '\n🛑 BLOCKED by veto-leash\n';
+  message += `\n  Reason: ${reason}`;
+  if (opts?.line) message += `\n  Line: ${opts.line}`;
+  if (opts?.match) message += `\n  Match: ${opts.match}`;
+  if (opts?.suggest) message += `\n\n💡 Suggestion: ${opts.suggest}`;
+  message += '\n\nModify your approach to comply with the policy.';
 
   const output = {
     hookSpecificOutput: {
