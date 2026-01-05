@@ -5,10 +5,17 @@ dist/
 .DS_Store
 
 # Go binaries
-/veto
-/go/veto
-/go/veto-*
+packages/cli/go/veto
+packages/cli/go/veto-*
 
-# Native binary in bin (veto.js is tracked)
-bin/veto
-bin/veto.exe
+# Native binary in bin
+packages/cli/bin/veto
+packages/cli/bin/veto.exe
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Test coverage
+coverage/

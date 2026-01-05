@@ -1,72 +1,28 @@
 {
-  "name": "veto-cli",
-  "version": "3.0.0",
-  "description": "The permission layer for AI agents — sudo for AI",
-  "main": "./dist/cli.js",
-  "bin": {
-    "veto": "./bin/veto.js"
-  },
-  "type": "module",
-  "files": [
-    "dist",
-    "bin",
-    "go/veto-*",
-    "scripts/postinstall.js"
-  ],
-  "scripts": {
-    "build": "tsc && chmod +x dist/cli.js",
-    "build:go": "cd go && make build-all",
-    "build:all": "pnpm build && pnpm build:go",
-    "postinstall": "node scripts/postinstall.js",
-    "dev": "tsx src/cli.ts",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit",
-    "ci": "pnpm build && pnpm test && pnpm typecheck",
-    "release": "pnpm run ci && npm publish --access public && git push && git push --tags",
-    "release:patch": "npm version patch && pnpm release",
-    "release:minor": "npm version minor && pnpm release",
-    "release:major": "npm version major && pnpm release",
-    "prepublishOnly": "pnpm run build:all && pnpm run ci"
-  },
-  "dependencies": {
-    "@google/genai": "^1.34.0",
-    "chokidar": "^4.0.3",
-    "glob": "^11.0.0",
-    "micromatch": "^4.0.8",
-    "prompts": "^2.4.2",
-    "web-tree-sitter": "^0.26.3",
-    "yaml": "^2.8.2"
-  },
-  "devDependencies": {
-    "@types/micromatch": "^4.0.9",
-    "@types/node": "^22.0.0",
-    "@types/prompts": "^2.4.9",
-    "tree-sitter-wasms": "^0.1.13",
-    "tsx": "^4.19.0",
-    "typescript": "^5.7.0",
-    "vitest": "^4.0.16"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "keywords": [
-    "ai",
-    "agents",
-    "permissions",
-    "security",
-    "claude",
-    "opencode",
-    "cursor",
-    "windsurf",
-    "veto",
-    "cli"
-  ],
-  "author": "Plaw, Inc.",
-  "license": "Apache-2.0",
+  "name": "veto",
+  "private": true,
+  "description": "The permission layer for AI agents",
   "repository": {
     "type": "git",
     "url": "https://github.com/VulnZap/veto"
-  }
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "dev:cli": "pnpm --filter @veto/cli dev",
+    "dev:sdk": "pnpm --filter veto dev",
+    "build:cli": "pnpm --filter @veto/cli build",
+    "build:sdk": "pnpm --filter veto build"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "license": "Apache-2.0",
+  "author": "Plaw, Inc."
 }
