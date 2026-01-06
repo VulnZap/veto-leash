@@ -52,7 +52,7 @@ const { definitions, implementations } = veto.wrapTools([
 
 // Pass definitions to your AI provider
 const response = await openai.chat.completions.create({
-  model: 'gpt-4',
+  model: 'gpt-5.2',
   tools: toOpenAITools(definitions),
   messages: [...]
 });
@@ -82,7 +82,7 @@ definitions, implementations = veto.wrap_tools([
 
 # Pass definitions to your AI provider
 response = await openai.chat.completions.create(
-    model="gpt-4",
+    model="gpt-5.2",
     tools=to_openai_tools(definitions),
     messages=[...]
 )

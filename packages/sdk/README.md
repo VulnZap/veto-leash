@@ -241,7 +241,7 @@ const { definitions, implementations } = veto.wrapTools(myTools);
 
 // Pass definitions to OpenAI
 const response = await openai.chat.completions.create({
-  model: 'gpt-4',
+  model: 'gpt-5.2',
   tools: toOpenAITools(definitions),
   messages: [...]
 });
@@ -270,7 +270,7 @@ const { definitions, implementations } = veto.wrapTools(myTools);
 
 // Pass definitions to Anthropic
 const response = await anthropic.messages.create({
-  model: 'claude-3-opus-20240229',
+  model: 'claude-opus-4.5',
   tools: toAnthropicTools(definitions),
   messages: [...]
 });

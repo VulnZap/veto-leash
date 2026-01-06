@@ -1037,7 +1037,7 @@ export class Veto {
    * const wrappedTools = veto.wrap(tools);
    *
    * const agent = createAgent({
-   *   model: 'openai:gpt-4o',
+   *   model: 'openai:gpt-5.2',
    *   tools: wrappedTools, // Same type as input!
    * });
    * ```
