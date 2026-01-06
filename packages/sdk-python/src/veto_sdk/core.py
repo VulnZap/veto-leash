@@ -3,15 +3,14 @@ from typing import Any, Callable, Optional
 
 import yaml
 
+from veto_sdk.errors import ToolCallDeniedError
 from veto_sdk.types import (
     Decision,
     Rule,
-    RuleSet,
     ToolCall,
     ToolDefinition,
     ValidationResult,
 )
-from veto_sdk.errors import ToolCallDeniedError
 
 
 class Veto:
@@ -58,7 +57,7 @@ class Veto:
                             self.rules.append(self._parse_rule(rule_data))
 
     def _parse_rule(self, data: dict[str, Any]) -> Rule:
-        from veto_sdk.types import Condition, Severity, Action
+        from veto_sdk.types import Action, Condition, Severity
 
         conditions = []
         for cond in data.get("conditions", []):

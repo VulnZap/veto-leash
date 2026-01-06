@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Any, Callable, Literal, Optional
 from enum import Enum
+from typing import Any, Callable, Optional
 
 
 class Severity(str, Enum):
