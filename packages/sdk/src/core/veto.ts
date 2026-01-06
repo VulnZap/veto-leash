@@ -36,6 +36,8 @@ import type {
 import { parseRuleSetStrict, RuleSchemaError } from '../rules/types.js';
 import type { KernelConfig, KernelToolCall } from '../kernel/types.js';
 import { KernelClient } from '../kernel/client.js';
+import type { CustomConfig, CustomToolCall } from '../custom/types.js';
+import { CustomClient } from '../custom/client.js';
 
 /**
  * Veto operating mode.
@@ -48,8 +50,9 @@ export type VetoMode = 'strict' | 'log';
  * Validation mode - how tool calls are validated.
  * - "api": Use external HTTP API for validation
  * - "kernel": Use local kernel model via Ollama
+ * - "custom": Use custom LLM provider (OpenAI, Anthropic, Gemini, OpenRouter)
  */
-export type ValidationMode = 'api' | 'kernel';
+export type ValidationMode = 'api' | 'kernel' | 'custom';
 
 /**
  * Wrapped handler function type.
@@ -88,6 +91,15 @@ interface VetoConfigFile {
     temperature?: number;
     maxTokens?: number;
     timeout?: number;
+  };
+  custom?: {
+    provider?: string;
+    model?: string;
+    apiKey?: string;
+    temperature?: number;
+    maxTokens?: number;
+    timeout?: number;
+    baseUrl?: string;
   };
   logging?: {
     level?: LogLevel;
@@ -196,6 +208,10 @@ export class Veto {
   private kernelClient: KernelClient | null = null;
   private readonly kernelConfig: KernelConfig | null;
 
+  // Custom client (lazy initialized)
+  private customClient: CustomClient | null = null;
+  private readonly customConfig: CustomConfig | null;
+
   // Loaded rules
   private readonly rules: LoadedRulesState;
 
@@ -240,6 +256,21 @@ export class Veto {
       this.kernelClient = options.kernelClient;
     }
 
+    // Resolve custom configuration
+    if (this.validationMode === 'custom' && config.custom?.provider && config.custom?.model) {
+      this.customConfig = {
+        provider: config.custom.provider as import('../custom/types.js').CustomProvider,
+        model: config.custom.model,
+        apiKey: config.custom.apiKey,
+        temperature: config.custom.temperature,
+        maxTokens: config.custom.maxTokens,
+        timeout: config.custom.timeout,
+        baseUrl: config.custom.baseUrl,
+      };
+    } else {
+      this.customConfig = null;
+    }
+
     // Resolve tracking options
     this.sessionId = options.sessionId ?? process.env.VETO_SESSION_ID;
     this.agentId = options.agentId ?? process.env.VETO_AGENT_ID;
@@ -250,6 +281,8 @@ export class Veto {
       validationMode: this.validationMode,
       apiUrl: this.validationMode === 'api' ? `${this.apiBaseUrl}${this.apiEndpoint}` : undefined,
       kernelModel: this.kernelConfig?.model,
+      customProvider: this.customConfig?.provider,
+      customModel: this.customConfig?.model,
       rulesLoaded: rules.allRules.length,
     });
 
@@ -265,10 +298,14 @@ export class Veto {
       name: 'veto-rule-validator',
       description: this.validationMode === 'kernel'
         ? 'Validates tool calls via local kernel model'
+        : this.validationMode === 'custom'
+        ? 'Validates tool calls via custom LLM provider'
         : 'Validates tool calls via external API',
       priority: 50,
       validate: (ctx) => this.validationMode === 'kernel'
         ? this.validateWithKernel(ctx)
+        : this.validationMode === 'custom'
+        ? this.validateWithCustom(ctx)
         : this.validateWithAPI(ctx),
     });
 
@@ -742,6 +779,127 @@ export class Veto {
         decision: 'deny',
         reason: `Kernel unavailable: ${reason}`,
         metadata: { kernel_error: true },
+      };
+    }
+  }
+
+  /**
+   * Get or create the custom client.
+   */
+  private getCustomClient(): CustomClient {
+    if (this.customClient) {
+      return this.customClient;
+    }
+
+    if (!this.customConfig) {
+      throw new Error('Custom configuration not available');
+    }
+
+    this.customClient = new CustomClient({
+      config: this.customConfig,
+      logger: this.logger,
+    });
+
+    return this.customClient;
+  }
+
+  /**
+   * Validate a tool call with the custom LLM provider.
+   */
+  private async validateWithCustom(context: ValidationContext): Promise<ValidationResult> {
+    const rules = this.getRulesForTool(context.toolName);
+
+    if (rules.length === 0) {
+      this.logger.debug('No rules for tool, allowing', { tool: context.toolName });
+      return { decision: 'allow' };
+    }
+
+    const toolCall: CustomToolCall = {
+      tool: context.toolName,
+      arguments: context.arguments,
+    };
+
+    try {
+      const customClient = this.getCustomClient();
+      const response = await customClient.evaluate(toolCall, rules);
+
+      return this.handleCustomResponse(response, context);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      return this.handleCustomFailure(reason);
+    }
+  }
+
+  /**
+   * Handle successful custom response.
+   */
+  private handleCustomResponse(
+    response: import('../custom/types.js').CustomResponse,
+    context: ValidationContext
+  ): ValidationResult {
+    const metadata = {
+      pass_weight: response.pass_weight,
+      block_weight: response.block_weight,
+      matched_rules: response.matched_rules,
+    };
+
+    if (response.decision === 'pass') {
+      this.logger.debug('Custom provider allowed tool call', {
+        tool: context.toolName,
+        passWeight: response.pass_weight,
+      });
+
+      return {
+        decision: 'allow',
+        reason: response.reasoning,
+        metadata,
+      };
+    } else {
+      if (this.mode === 'log') {
+        this.logger.warn('Tool call would be blocked (log mode)', {
+          tool: context.toolName,
+          blockWeight: response.block_weight,
+          reason: response.reasoning,
+        });
+
+        return {
+          decision: 'allow',
+          reason: `[LOG MODE] Would block: ${response.reasoning}`,
+          metadata: { ...metadata, blocked_in_strict_mode: true },
+        };
+      } else {
+        this.logger.warn('Tool call blocked by custom provider', {
+          tool: context.toolName,
+          blockWeight: response.block_weight,
+          reason: response.reasoning,
+        });
+
+        return {
+          decision: 'deny',
+          reason: response.reasoning,
+          metadata,
+        };
+      }
+    }
+  }
+
+  /**
+   * Handle custom provider failure. In log mode, always allow. In strict mode, block.
+   */
+  private handleCustomFailure(reason: string): ValidationResult {
+    if (this.mode === 'log') {
+      this.logger.warn('Custom provider unavailable (log mode, allowing)', { reason });
+      return {
+        decision: 'allow',
+        reason: `Custom provider unavailable: ${reason}`,
+        metadata: { custom_error: true },
+      };
+    } else {
+      this.logger.error('Custom provider unavailable (strict mode, blocking)', { reason });
+      return {
+        decision: 'deny',
+        reason: `Custom provider unavailable: ${reason}`,
+        metadata: { custom_error: true },
       };
     }
   }

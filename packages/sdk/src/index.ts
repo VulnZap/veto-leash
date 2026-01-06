@@ -101,5 +101,14 @@ export type {
   GoogleFunctionCall,
 } from './providers/types.js';
 
+// Custom LLM provider module
+export type {
+  CustomProvider,
+  CustomConfig,
+  CustomResponse,
+  CustomToolCall,
+} from './custom/types.js';
+export { CustomClient } from './custom/client.js';
+
 // CLI init function (for programmatic use)
 export { init, isInitialized } from './cli/init.js';

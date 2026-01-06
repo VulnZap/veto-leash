@@ -38,10 +38,18 @@
     "vitest": "^4.0.16"
   },
   "peerDependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@google/generative-ai": "^0.21.0",
     "openai": "^4.0.0",
     "zod": "^3.22.0"
   },
   "peerDependenciesMeta": {
+    "@anthropic-ai/sdk": {
+      "optional": true
+    },
+    "@google/generative-ai": {
+      "optional": true
+    },
     "openai": {
       "optional": true
     },
