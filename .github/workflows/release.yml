@@ -2,65 +2,146 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'sdk@*'
-      - 'cli@*'
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Force publish even without changesets"
+        required: false
+        default: "false"
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
 jobs:
   release:
+    name: Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Turbo Cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      - name: Build packages
+        run: pnpm turbo build --filter='./packages/*'
+
+      - name: Create Release PR or Publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: pnpm changeset version
+          publish: pnpm release
+          commit: "chore: release packages"
+          title: "chore: release packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish Python SDK to PyPI
+        if: steps.changesets.outputs.published == 'true'
+        working-directory: packages/sdk-python
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          python -m twine upload dist/* --non-interactive
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+      - name: Create GitHub Release for Python
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          VERSION=$(grep -m1 'version = ' packages/sdk-python/pyproject.toml | cut -d'"' -f2)
+          if git tag | grep -q "sdk-py@$VERSION"; then
+            echo "Tag sdk-py@$VERSION already exists, skipping"
+          else
+            git tag "sdk-py@$VERSION"
+            git push origin "sdk-py@$VERSION"
+            gh release create "sdk-py@$VERSION" \
+              --title "veto-sdk (Python) v$VERSION" \
+              --notes "See [CHANGELOG](https://github.com/VulnZap/veto/blob/master/packages/sdk-python/CHANGELOG.md)" \
+              --target master
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Manual release option
+  release-manual:
+    name: Manual Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.force == 'true'
     permissions:
       contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
-          registry-url: 'https://registry.npmjs.org'
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
 
-      - name: Parse tag
-        id: tag
-        run: |
-          TAG="${GITHUB_REF#refs/tags/}"
-          PACKAGE=$(echo $TAG | cut -d@ -f1)
-          VERSION=$(echo $TAG | cut -d@ -f2)
-          echo "package=$PACKAGE" >> $GITHUB_OUTPUT
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Releasing $PACKAGE@$VERSION"
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Build SDK
-        if: steps.tag.outputs.package == 'sdk'
-        run: pnpm --filter veto-sdk build
-
-      - name: Build CLI
-        if: steps.tag.outputs.package == 'cli'
-        run: |
-          pnpm --filter veto-sdk build
-          pnpm --filter veto-cli build
-
-      - name: Publish SDK
-        if: steps.tag.outputs.package == 'sdk'
-        run: pnpm --filter veto-sdk publish --no-git-checks --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish CLI
-        if: steps.tag.outputs.package == 'cli'
-        run: pnpm --filter veto-cli publish --no-git-checks --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+      - uses: actions/setup-python@v5
         with:
-          name: ${{ steps.tag.outputs.package }}@${{ steps.tag.outputs.version }}
-          generate_release_notes: true
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm turbo build --filter='./packages/*'
+
+      - name: Publish npm packages
+        run: |
+          pnpm --filter veto-sdk publish --no-git-checks --access public || true
+          pnpm --filter veto-cli publish --no-git-checks --access public || true
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish Python SDK
+        working-directory: packages/sdk-python
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          python -m twine upload dist/* --non-interactive --skip-existing
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}

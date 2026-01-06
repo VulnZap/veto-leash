@@ -3,6 +3,7 @@ dist/
 *.log
 .env
 .DS_Store
+.turbo/
 
 # Go binaries
 packages/cli/go/veto

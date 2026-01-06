@@ -1,32 +1,25 @@
-## What
+## Summary
 
-<!-- Brief description of the change -->
+<!-- What does this PR do? Keep it brief. -->
 
-## Why
+## Changes
 
-<!-- Why is this change needed? -->
+-
 
-## Package
+## Type
 
-<!-- Check the affected package(s) -->
-
-- [ ] `sdk` - Core SDK (`packages/sdk`)
-- [ ] `cli` - CLI tool (`packages/cli`)
-- [ ] `web` - Landing page (`apps/web`)
-- [ ] `docs` - Documentation only
-- [ ] `infra` - CI/tooling/configs
-
-## Testing
-
-<!-- How was this tested? -->
-
-- [ ] Unit tests added/updated
-- [ ] Manual testing done
-- [ ] N/A
+- [ ] 🐛 Bug fix
+- [ ] ✨ New feature
+- [ ] 💥 Breaking change
+- [ ] 📝 Documentation
+- [ ] 🔧 Chore (refactor, deps, CI)
 
 ## Checklist
 
-- [ ] My code follows the project style
-- [ ] I've updated relevant docs (if needed)
-- [ ] Tests pass locally (`pnpm test`)
+- [ ] Added changeset (`pnpm changeset`) if this affects published packages
+- [ ] Tests pass (`pnpm test`)
 - [ ] Build succeeds (`pnpm build`)
+
+## Related Issues
+
+<!-- Fixes #123, Closes #456 -->

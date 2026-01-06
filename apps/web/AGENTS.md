@@ -34,7 +34,8 @@ apps/web/
 
 ## Key File: App.tsx
 
-This is a single-page landing. Key sections:
+Single-page landing with sections:
+
 1. Hero - "The permission layer for AI agents"
 2. Problem - What can go wrong
 3. Solution - How Veto helps
@@ -45,28 +46,19 @@ This is a single-page landing. Key sections:
 ## Styling
 
 ```tsx
-// Use Tailwind classes
 <div className="max-w-4xl mx-auto px-4 py-16">
-  <h1 className="text-5xl font-bold text-white">
-    Veto
-  </h1>
+  <h1 className="text-5xl font-bold text-white">Veto</h1>
 </div>
-
-// Dark theme by default
-// Orange accent: #f5a524 (Veto brand color)
 ```
+
+- Dark theme by default
+- Orange accent: #f5a524 (Veto brand color)
+- Mobile-responsive: use `sm:`, `md:`, `lg:` prefixes
 
 ## Deployment
 
-Built output goes to `dist/`. Deploy to:
-- Vercel (recommended)
-- Netlify
-- Cloudflare Pages
-- Any static host
+Built output goes to `dist/`. Deploy to Vercel, Netlify, or Cloudflare Pages.
 
-## Adding Sections
+## Note
 
-1. Edit `src/App.tsx`
-2. Use existing Tailwind patterns
-3. Keep mobile-responsive (`sm:`, `md:`, `lg:` prefixes)
-4. Test with `pnpm dev`
+This package is excluded from Changesets (`@veto/web` in ignore list). Deploy manually or via Vercel auto-deploy.

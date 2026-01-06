@@ -4,22 +4,24 @@
 
 ## Monorepo Navigation
 
-| Package | Purpose | Guide |
-|---------|---------|-------|
-| [`packages/sdk`](./packages/sdk) | TypeScript SDK for agentic apps | [TS SDK AGENTS.md](./packages/sdk/AGENTS.md) |
-| [`packages/sdk-python`](./packages/sdk-python) | Python SDK for agentic apps | [Python SDK AGENTS.md](./packages/sdk-python/AGENTS.md) |
-| [`packages/cli`](./packages/cli) | CLI + TUI for AI coding assistants | [CLI AGENTS.md](./packages/cli/AGENTS.md) |
-| [`apps/web`](./apps/web) | Landing page (veto.run) | [Web AGENTS.md](./apps/web/AGENTS.md) |
+| Package                                        | Purpose                            | Guide                                                   |
+| ---------------------------------------------- | ---------------------------------- | ------------------------------------------------------- |
+| [`packages/sdk`](./packages/sdk)               | TypeScript SDK for agentic apps    | [TS SDK AGENTS.md](./packages/sdk/AGENTS.md)            |
+| [`packages/sdk-python`](./packages/sdk-python) | Python SDK for agentic apps        | [Python SDK AGENTS.md](./packages/sdk-python/AGENTS.md) |
+| [`packages/cli`](./packages/cli)               | CLI + TUI for AI coding assistants | [CLI AGENTS.md](./packages/cli/AGENTS.md)               |
+| [`apps/web`](./apps/web)                       | Landing page (veto.run)            | [Web AGENTS.md](./apps/web/AGENTS.md)                   |
 
 ## Quick Commands
 
 ```bash
-pnpm install                 # Install all dependencies
-pnpm build                   # Build SDK + CLI
-pnpm test                    # Test SDK + CLI
-pnpm dev:sdk                 # Watch SDK
-pnpm dev:cli                 # Watch CLI
-pnpm dev:web                 # Start landing page dev server
+pnpm install          # Install all dependencies
+pnpm build            # Build all packages (turbo-cached)
+pnpm test             # Test all packages (turbo-cached)
+pnpm typecheck        # Typecheck all packages
+pnpm dev:sdk          # Watch SDK
+pnpm dev:cli          # Watch CLI
+pnpm dev:web          # Start landing page dev server
+pnpm changeset        # Add a changeset for releases
 ```
 
 ## Code Style (All Packages)
@@ -32,15 +34,31 @@ pnpm dev:web                 # Start landing page dev server
   - CLI: `CLIError`, `ConfigError`, `ValidationError`, `AgentError`, `NetworkError`
 - **Tests**: Vitest with `describe`/`it`/`expect`, pattern `test/*.test.ts` or `tests/*.test.ts`
 
-## Branching & CI
+## CI/CD
 
-- **Branches**: `feat/sdk/*`, `feat/cli/*`, `fix/sdk/*`, `fix/cli/*`, `chore/infra/*`
-- **CI**: Path-filtered (only affected packages test on PR)
-- **Release**: Tag-based (`git tag sdk@1.1.0 && git push origin sdk@1.1.0`)
+### Build System
+
+- **Turborepo**: All builds/tests are turbo-cached for speed
+- **Parallel**: SDK + CLI build/test run in parallel
+- **Cache**: Local `.turbo/` cache, CI uses remote caching
+
+### Release Process (Changesets)
+
+1. Make changes, add a changeset: `pnpm changeset`
+2. PR merges to `master`
+3. "Version Packages" PR auto-created
+4. Merge that PR → auto-publishes to npm (SDK, CLI) and PyPI (Python SDK)
+
+### Branching
+
+- `feat/sdk/*`, `feat/cli/*` - New features
+- `fix/sdk/*`, `fix/cli/*` - Bug fixes
+- `chore/infra/*` - CI/tooling
 
 ## Links
 
 - **Repo**: https://github.com/VulnZap/veto
 - **npm SDK**: https://npmjs.com/package/veto-sdk
 - **npm CLI**: https://npmjs.com/package/veto-cli
+- **PyPI SDK**: https://pypi.org/project/veto-sdk
 - **Landing**: https://veto.run

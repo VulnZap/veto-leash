@@ -1,6 +1,6 @@
 # Contributing to Veto
 
-Welcome! This guide will get you shipping fast.
+Thanks for your interest in contributing! This guide will get you up and running quickly.
 
 ## Quick Start
 
@@ -12,181 +12,134 @@ pnpm build
 pnpm test
 ```
 
-## Monorepo Structure
+## Project Structure
 
 ```
 veto/
 ├── packages/
-│   ├── sdk/          # veto-sdk - Core guardrail system
-│   └── cli/          # veto-cli - Terminal interface
+│   ├── sdk/           # TypeScript SDK (npm: veto-sdk)
+│   ├── sdk-python/    # Python SDK (pip: veto-sdk)
+│   └── cli/           # CLI + TUI (npm: veto-cli)
 ├── apps/
-│   └── web/          # veto.run landing page
-└── docs/
-```
-
-## Branch Naming
-
-Use this format: `<type>/<package>/<description>`
-
-| Type | Use for |
-|------|---------|
-| `feat` | New features |
-| `fix` | Bug fixes |
-| `refactor` | Code improvements |
-| `docs` | Documentation |
-| `test` | Test additions |
-| `chore` | Maintenance |
-
-### Examples
-
-```bash
-# SDK feature
-git checkout -b feat/sdk/add-anthropic-provider
-
-# CLI bug fix
-git checkout -b fix/cli/tui-crash-on-empty-config
-
-# Web update
-git checkout -b feat/web/add-pricing-section
-
-# Cross-package refactor
-git checkout -b refactor/core/rename-interceptor
-
-# Docs only
-git checkout -b docs/readme-update
-```
-
-### Quick Reference
-
-```bash
-# Working on SDK
-feat/sdk/*
-fix/sdk/*
-
-# Working on CLI
-feat/cli/*
-fix/cli/*
-
-# Working on Web
-feat/web/*
-fix/web/*
-
-# Infrastructure/CI
-chore/infra/*
+│   └── web/           # Landing page (veto.run)
+└── .changeset/        # Version management
 ```
 
 ## Development Workflow
 
-### 1. Create your branch
+### 1. Create a Branch
 
 ```bash
-git checkout master
-git pull origin master
-git checkout -b feat/sdk/my-feature
+git checkout -b feat/sdk/your-feature   # SDK feature
+git checkout -b feat/cli/your-feature   # CLI feature
+git checkout -b fix/sdk/your-fix        # SDK bugfix
 ```
 
-### 2. Make changes
+### 2. Make Changes
 
 ```bash
-# Work on SDK
-pnpm --filter veto-sdk dev
-
-# Work on CLI
-pnpm --filter veto-cli dev
-
-# Work on Web
-pnpm --filter @veto/web dev
+pnpm dev:sdk    # Watch SDK
+pnpm dev:cli    # Watch CLI
+pnpm dev:web    # Landing page dev server
 ```
 
-### 3. Test your changes
+Code style:
+
+- **TypeScript**: Use `.js` extensions in imports
+- **Types**: Explicit param/return types, use `type` imports
+- **Errors**: Throw typed errors, never `process.exit()` in libraries
+- **Tests**: Add tests for new functionality
+
+### 3. Add a Changeset
+
+Every PR that affects published packages needs a changeset:
 
 ```bash
-# Test specific package
-pnpm --filter veto-sdk test
-pnpm --filter veto-cli test
-
-# Test all
-pnpm test
+pnpm changeset
 ```
 
-### 4. Commit and push
+This prompts you to:
+
+1. Select changed packages
+2. Choose bump type (patch/minor/major)
+3. Write a change summary
+
+**Bump Guidelines:**
+
+- `patch`: Bug fixes, dependency updates
+- `minor`: New features, non-breaking additions
+- `major`: Breaking changes
+
+### 4. Run Checks
 
 ```bash
-git add .
-git commit -m "feat(sdk): add anthropic provider support"
-git push -u origin feat/sdk/my-feature
+pnpm build      # Build all packages
+pnpm test       # Run all tests
+pnpm typecheck  # Type check (if available)
 ```
 
-### 5. Open PR
+### 5. Submit PR
 
-PRs to `master` trigger CI for affected packages only.
+- Use descriptive title: `feat(sdk): add kernel validation mode`
+- Reference issues: `Fixes #123`
+- Ensure CI passes
 
-## Commit Messages
-
-Format: `type(scope): description`
+## Testing
 
 ```bash
-feat(sdk): add tool validation middleware
-fix(cli): handle empty policy files gracefully
-docs(readme): update installation instructions
-test(sdk): add kernel edge case tests
-chore(deps): bump typescript to 5.4
+pnpm test                           # All tests
+pnpm --filter veto-sdk test         # SDK only
+pnpm --filter veto-cli test         # CLI only
+pnpm --filter veto-sdk test:watch   # Watch mode
 ```
 
-## CI Pipeline
-
-CI automatically detects what changed:
-
-| You change... | CI runs... |
-|--------------|------------|
-| `packages/sdk/**` | SDK tests |
-| `packages/cli/**` | CLI tests + Go build |
-| `apps/web/**` | Web build |
-| Multiple | All affected |
-
-## Releasing
-
-Releases are tag-based:
+### Python SDK
 
 ```bash
-# Release SDK v1.1.0
-git tag sdk@1.1.0
-git push origin sdk@1.1.0
-
-# Release CLI v3.2.0
-git tag cli@3.2.0
-git push origin cli@3.2.0
+cd packages/sdk-python
+pip install -e ".[dev]"
+pytest -v
+ruff check src
+mypy src
 ```
 
-This triggers automated npm publish.
+## Release Process
 
-## Package Dependencies
+Releases are fully automated:
 
-```
-veto-cli ──depends on──> veto-sdk
-@veto/web (standalone)
-```
+1. PRs with changesets merge to `master`
+2. A "Version Packages" PR is automatically created
+3. Merging that PR:
+   - Bumps versions
+   - Generates changelogs
+   - Publishes to npm (SDK, CLI)
+   - Publishes to PyPI (Python SDK)
+   - Creates GitHub releases
 
-When changing SDK, also test CLI:
+Manual release (maintainers only):
+
 ```bash
-pnpm build && pnpm --filter veto-cli test
+gh workflow run release.yml -f force=true
 ```
 
 ## Commands Reference
 
-| Command | Description |
-|---------|-------------|
-| `pnpm install` | Install all dependencies |
-| `pnpm build` | Build SDK + CLI |
-| `pnpm test` | Run all tests |
-| `pnpm dev:sdk` | Watch SDK |
-| `pnpm dev:cli` | Watch CLI |
-| `pnpm dev:web` | Start web dev server |
+| Command          | Description              |
+| ---------------- | ------------------------ |
+| `pnpm install`   | Install all dependencies |
+| `pnpm build`     | Build all packages       |
+| `pnpm test`      | Run all tests            |
+| `pnpm typecheck` | Type check all packages  |
+| `pnpm changeset` | Add a changeset          |
+| `pnpm dev:sdk`   | Watch SDK                |
+| `pnpm dev:cli`   | Watch CLI                |
+| `pnpm dev:web`   | Start web dev server     |
 
 ## Getting Help
 
-- Open an issue for bugs
-- Discussions for questions
-- PRs always welcome
+- [GitHub Issues](https://github.com/VulnZap/veto/issues) - Bug reports, feature requests
+- [GitHub Discussions](https://github.com/VulnZap/veto/discussions) - Questions, ideas
 
-Happy hacking!
+## License
+
+By contributing, you agree that your contributions will be licensed under the Apache-2.0 License.

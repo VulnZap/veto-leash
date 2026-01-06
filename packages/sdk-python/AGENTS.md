@@ -47,27 +47,27 @@ from veto_sdk.types import Rule, ToolDefinition
 async def main():
     veto = await Veto.init()
     definitions, implementations = veto.wrap_tools(tools)
-    
+
     try:
         result = await implementations["read_file"]({"path": "/etc/passwd"})
     except ToolCallDeniedError as e:
         print(f"Blocked: {e.validation_result.reason}")
 ```
 
-## Testing
-
-```bash
-pytest tests/                     # All tests
-pytest tests/test_core.py -v      # Verbose output
-pytest -k "test_block"            # Pattern matching
-pytest --cov=veto_sdk             # Coverage
-```
-
 ## Parity with TypeScript SDK
 
-| Feature | TypeScript | Python |
-|---------|------------|--------|
-| Core API | `Veto.init()`, `wrapTools()` | `Veto.init()`, `wrap_tools()` |
-| Errors | `ToolCallDeniedError`, `RuleSchemaError` | Same |
-| Rules | YAML in `veto/rules/` | Same |
-| Providers | OpenAI, Anthropic, Google | OpenAI, Anthropic, LangChain |
+| Feature   | TypeScript                               | Python                        |
+| --------- | ---------------------------------------- | ----------------------------- |
+| Core API  | `Veto.init()`, `wrapTools()`             | `Veto.init()`, `wrap_tools()` |
+| Errors    | `ToolCallDeniedError`, `RuleSchemaError` | Same                          |
+| Rules     | YAML in `veto/rules/`                    | Same                          |
+| Providers | OpenAI, Anthropic, Google                | OpenAI, Anthropic, LangChain  |
+
+## Release
+
+Releases are automated via Changesets + CI. To release:
+
+1. Update version in `pyproject.toml`
+2. Add changeset at monorepo root: `pnpm changeset`
+3. Merge PR → "Version Packages" PR created
+4. Merge that → published to PyPI automatically

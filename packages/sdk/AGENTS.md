@@ -1,14 +1,13 @@
 # SDK AGENTS.md
 
-> **veto-sdk** is the core guardrail system. It intercepts AI tool calls, validates them against YAML rules, and blocks dangerous operations. This is the heart of Veto.
+> **veto-sdk** is the core guardrail system. It intercepts AI tool calls, validates them against YAML rules, and blocks dangerous operations.
 
 ## Commands
 
 ```bash
 pnpm build                          # Build SDK
-pnpm test                           # Run all 145 tests
+pnpm test                           # Run tests (turbo-cached)
 pnpm test -- -t "validator"         # Run tests matching "validator"
-pnpm test -- tests/core/veto        # Run tests in specific file
 pnpm dev                            # Watch mode
 pnpm benchmark:dev                  # Run kernel benchmark
 ```
@@ -52,62 +51,45 @@ src/
 ## Code Patterns
 
 ```typescript
-// Imports: always .js extension, type imports separate
-import { join } from 'node:path';
-import type { ToolDefinition } from '../types/tool.js';
+import { join } from "node:path";
+import type { ToolDefinition } from "../types/tool.js";
 
-// Errors: typed, with context
-throw new ToolCallDeniedError(toolName, 'Blocked by rule: ' + rule.id);
-throw new RuleSchemaError('Invalid severity', filePath, 'rules[0].severity');
+throw new ToolCallDeniedError(toolName, "Blocked by rule: " + rule.id);
+throw new RuleSchemaError("Invalid severity", filePath, "rules[0].severity");
 
-// Async: always async/await, never .then()
 const result = await veto.validateToolCall(call);
 ```
 
 ## Schema Validation
 
-Rule YAML files are strictly validated on load. Invalid files throw `RuleSchemaError` with clear messages:
+Rule YAML files are strictly validated on load. Invalid files throw `RuleSchemaError`:
 
 ```typescript
-import { parseRuleSetStrict, RuleSchemaError } from 'veto-sdk';
+import { parseRuleSetStrict, RuleSchemaError } from "veto-sdk";
 
 try {
-  const ruleSet = parseRuleSetStrict(yamlContent, 'path/to/file.yaml');
+  const ruleSet = parseRuleSetStrict(yamlContent, "path/to/file.yaml");
 } catch (err) {
   if (err instanceof RuleSchemaError) {
-    console.error(err.message); // "Invalid severity in path/to/file.yaml.rules[0]: expected critical|high|medium|low|info"
+    console.error(err.message);
   }
 }
 ```
 
-Validated fields: `id`, `name`, `action`, `severity`, `conditions`, `condition_groups`, `settings`
+## Key Files
 
-## Testing
+| File                        | What It Does                                                          |
+| --------------------------- | --------------------------------------------------------------------- |
+| `src/core/veto.ts`          | Entry point. `Veto.init()` loads config, `wrapTools()` wraps handlers |
+| `src/core/interceptor.ts`   | Intercepts calls, runs validation, throws `ToolCallDeniedError`       |
+| `src/core/validator.ts`     | Evaluates rules against tool call arguments                           |
+| `src/kernel/client.ts`      | Calls local Ollama model for semantic validation                      |
+| `src/providers/adapters.ts` | Converts tool definitions for OpenAI/Anthropic/Google                 |
 
-```bash
-# Test a specific module
-pnpm test -- tests/core/validator.test.ts
+## Release
 
-# Test with pattern
-pnpm test -- -t "should block dangerous"
+Releases are automated via Changesets. To release:
 
-# Watch single file
-pnpm test -- --watch tests/core/veto.test.ts
-```
-
-## Key Files to Understand
-
-| File | What It Does |
-|------|--------------|
-| `src/core/veto.ts` | Entry point. `Veto.init()` loads config, `wrapTools()` wraps handlers |
-| `src/core/interceptor.ts` | Intercepts calls, runs validation, throws `ToolCallDeniedError` |
-| `src/core/validator.ts` | Evaluates rules against tool call arguments |
-| `src/kernel/client.ts` | Calls local Ollama model for semantic validation |
-| `src/providers/adapters.ts` | Converts tool definitions for OpenAI/Anthropic/Google |
-
-## Data
-
-`data/` contains 30k training examples for the kernel model:
-- `data/veto_training_30k.jsonl` - Full training set
-- `data/benchmark/holdout_test.jsonl` - 100 test examples
-- `data/specs/*.md` - Domain specs (finance, devops, healthcare, etc.)
+1. Add changeset: `pnpm changeset` (select veto-sdk, choose bump type)
+2. Merge PR → "Version Packages" PR created
+3. Merge that → published to npm automatically

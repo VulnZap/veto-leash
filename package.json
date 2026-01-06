@@ -7,17 +7,31 @@
     "url": "https://github.com/VulnZap/veto"
   },
   "scripts": {
-    "build": "pnpm -r --filter './packages/*' build",
-    "test": "pnpm -r --filter './packages/*' test",
-    "typecheck": "pnpm -r --filter './packages/*' typecheck",
+    "build": "turbo build --filter='./packages/*'",
+    "test": "turbo test --filter='./packages/*'",
+    "typecheck": "turbo typecheck --filter='./packages/*'",
+    "lint": "turbo lint --filter='./packages/*'",
     "dev:cli": "pnpm --filter veto-cli dev",
     "dev:sdk": "pnpm --filter veto-sdk dev",
     "dev:web": "pnpm --filter @veto/web dev",
     "build:cli": "pnpm --filter veto-cli build",
     "build:sdk": "pnpm --filter veto-sdk build",
-    "build:web": "pnpm --filter @veto/web build"
+    "build:web": "pnpm --filter @veto/web build",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm build && changeset publish",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": "eslint --fix",
+    "*.{json,md,yml,yaml}": "prettier --write --ignore-unknown"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.5.2",
+    "@changesets/cli": "^2.29.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "turbo": "^2.7.3",
     "typescript": "^5.7.0"
   },
   "engines": {
