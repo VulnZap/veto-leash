@@ -258,8 +258,15 @@ export class Veto {
 
     // Resolve custom configuration
     if (this.validationMode === 'custom' && config.custom?.provider && config.custom?.model) {
+      const validProviders = ['openai', 'anthropic', 'gemini', 'openrouter'] as const;
+      const provider = config.custom.provider;
+      if (!validProviders.includes(provider as typeof validProviders[number])) {
+        throw new Error(
+          `Invalid custom provider: "${provider}". Must be one of: ${validProviders.join(', ')}`
+        );
+      }
       this.customConfig = {
-        provider: config.custom.provider as import('../custom/types.js').CustomProvider,
+        provider: provider as import('../custom/types.js').CustomProvider,
         model: config.custom.model,
         apiKey: config.custom.apiKey,
         temperature: config.custom.temperature,
@@ -1150,6 +1157,10 @@ export class Veto {
           const finalArgs = result.finalArguments ?? callArgs;
           if (args.length === 1 && typeof args[0] === 'object') {
             return originalFunc.call(tool, finalArgs);
+          }
+          // For positional args, check if finalArgs contains modified 'args' array
+          if (finalArgs.args && Array.isArray(finalArgs.args)) {
+            return originalFunc.apply(tool, finalArgs.args as unknown[]);
           }
           return originalFunc.apply(tool, args);
         };

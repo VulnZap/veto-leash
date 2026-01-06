@@ -19,23 +19,26 @@ The AI model remains unaware of the guardrail - tool schemas are unchanged.
 ## Installation
 
 ```bash
-npm install veto
+npm install veto-sdk
 ```
 
 ## Quick Start
 
 ### 1. Initialize Veto in your project
 
-```bash
-npx veto init
+```typescript
+import { init } from 'veto-sdk';
+await init();
 ```
+
+Or via CLI: `npm install -g veto-cli && veto init`
 
 This creates a `veto/` directory with configuration and default rules.
 
 ### 2. Define your tools and wrap them
 
 ```typescript
-import { Veto, ToolCallDeniedError } from 'veto';
+import { Veto, ToolCallDeniedError } from 'veto-sdk';
 
 // Define tools with handlers
 const tools = [
@@ -114,7 +117,17 @@ version: "1.0"
 # Operating mode
 mode: "strict"  # "strict" blocks calls, "log" only logs them
 
-# Validation API endpoint
+# Validation mode: "api", "kernel", or "custom"
+validation:
+  mode: "custom"
+
+# Custom LLM provider (when validation.mode is "custom")
+custom:
+  provider: "openai"  # openai, anthropic, gemini, openrouter
+  model: "gpt-4o"
+  # apiKey: "sk-..."  # Or set OPENAI_API_KEY env var
+
+# Validation API (when validation.mode is "api")
 api:
   baseUrl: "http://localhost:8080"
   endpoint: "/tool/call/check"
@@ -130,6 +143,34 @@ rules:
   directory: "./rules"
   recursive: true
 ```
+
+### Validation Modes
+
+| Mode | Description |
+|------|-------------|
+| `api` | Validate via external HTTP API (default) |
+| `kernel` | Validate via local Ollama model |
+| `custom` | Validate via custom LLM provider (OpenAI, Anthropic, Gemini, OpenRouter) |
+
+### Custom LLM Providers
+
+Use your own LLM for validation instead of an external API:
+
+```yaml
+validation:
+  mode: "custom"
+
+custom:
+  provider: "anthropic"
+  model: "claude-sonnet-4-20250514"
+```
+
+| Provider | Environment Variable | Example Models |
+|----------|---------------------|----------------|
+| `openai` | `OPENAI_API_KEY` | gpt-4o, gpt-4-turbo |
+| `anthropic` | `ANTHROPIC_API_KEY` | claude-sonnet-4-20250514, claude-opus-4-20250514 |
+| `gemini` | `GEMINI_API_KEY` | gemini-2.0-flash, gemini-1.5-pro |
+| `openrouter` | `OPENROUTER_API_KEY` | Any model on OpenRouter |
 
 ### Operating Modes
 
@@ -234,7 +275,7 @@ rules:
 ### OpenAI
 
 ```typescript
-import { Veto, toOpenAITools, fromOpenAIToolCall } from 'veto';
+import { Veto, toOpenAITools, fromOpenAIToolCall } from 'veto-sdk';
 
 const veto = await Veto.init();
 const { definitions, implementations } = veto.wrapTools(myTools);
@@ -263,7 +304,7 @@ for (const call of response.choices[0].message.tool_calls ?? []) {
 ### Anthropic
 
 ```typescript
-import { Veto, toAnthropicTools, fromAnthropicToolUse } from 'veto';
+import { Veto, toAnthropicTools, fromAnthropicToolUse } from 'veto-sdk';
 
 const veto = await Veto.init();
 const { definitions, implementations } = veto.wrapTools(myTools);
@@ -318,6 +359,37 @@ const { definitions, implementations } = veto.wrapTools(tools);
 // implementations: Object with wrapped handler functions keyed by tool name
 ```
 
+### veto.wrap(tools)
+
+Wrap tools with validation while preserving their original type. Works with LangChain, Vercel AI SDK, or any framework.
+
+```typescript
+import { tool } from '@langchain/core/tools';
+import { z } from 'zod';
+
+const tools = [
+  tool(({ query }) => searchDatabase(query), {
+    name: 'search',
+    description: 'Search the database',
+    schema: z.object({ query: z.string() }),
+  }),
+];
+
+const veto = await Veto.init();
+const wrappedTools = veto.wrap(tools); // Same type as input!
+
+// Use with any framework
+const agent = createAgent({ tools: wrappedTools });
+```
+
+### veto.wrapTool(tool)
+
+Wrap a single tool with validation.
+
+```typescript
+const safeTool = veto.wrapTool(myTool);
+```
+
 ### veto.validateToolCall(call)
 
 Manually validate a tool call (for custom execution flows).
@@ -350,14 +422,24 @@ Get all loaded rules.
 const rules = veto.getLoadedRules();
 ```
 
-## CLI Commands
+## Initialization
 
-| Command | Description |
-|---------|-------------|
-| `npx veto init` | Initialize Veto in current directory |
-| `npx veto init --force` | Reinitialize, overwriting existing files |
-| `npx veto help` | Show help |
-| `npx veto version` | Show version |
+### Programmatic (SDK)
+
+```typescript
+import { init } from 'veto-sdk';
+
+await init({ directory: './my-project' });
+```
+
+### CLI (via veto-cli)
+
+Install the CLI for command-line initialization:
+
+```bash
+npm install -g veto-cli
+veto init
+```
 
 ## Environment Variables
 
