@@ -6,7 +6,8 @@
 
 | Package | Purpose | Guide |
 |---------|---------|-------|
-| [`packages/sdk`](./packages/sdk) | Core guardrail SDK for agentic apps | [SDK AGENTS.md](./packages/sdk/AGENTS.md) |
+| [`packages/sdk`](./packages/sdk) | TypeScript SDK for agentic apps | [TS SDK AGENTS.md](./packages/sdk/AGENTS.md) |
+| [`packages/sdk-python`](./packages/sdk-python) | Python SDK for agentic apps | [Python SDK AGENTS.md](./packages/sdk-python/AGENTS.md) |
 | [`packages/cli`](./packages/cli) | CLI + TUI for AI coding assistants | [CLI AGENTS.md](./packages/cli/AGENTS.md) |
 | [`apps/web`](./apps/web) | Landing page (veto.run) | [Web AGENTS.md](./apps/web/AGENTS.md) |
 
