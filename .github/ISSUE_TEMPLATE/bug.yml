@@ -14,7 +14,7 @@ body:
       description: Which package is affected?
       options:
         - veto-sdk (TypeScript)
-        - veto-sdk (Python)
+        - veto (Python)
         - veto-cli
         - Multiple packages
     validations:
@@ -47,7 +47,7 @@ body:
       label: Reproduction Steps
       description: How can we reproduce this bug?
       placeholder: |
-        1. Install veto-sdk
+        1. Install veto/veto-sdk
         2. Create a rule with...
         3. Call wrapTools()
         4. See error

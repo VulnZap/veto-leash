@@ -6,11 +6,11 @@ Veto gives you control over what AI agents can and cannot do. Whether you're bui
 
 ## Packages
 
-| Package                           | Language   | Description                           | Documentation                                        |
-| --------------------------------- | ---------- | ------------------------------------- | ---------------------------------------------------- |
-| [veto-sdk](./packages/sdk)        | TypeScript | SDK for building guarded agentic apps | [**Read the docs**](./packages/sdk/README.md)        |
-| [veto-sdk](./packages/sdk-python) | Python     | SDK for building guarded agentic apps | [**Read the docs**](./packages/sdk-python/README.md) |
-| [veto-cli](./packages/cli)        | TypeScript | CLI for AI coding assistants          | [**Read the docs**](./packages/cli/README.md)        |
+| Package                       | Language   | Description                           | Documentation                                        |
+| ----------------------------- | ---------- | ------------------------------------- | ---------------------------------------------------- |
+| [veto-sdk](./packages/sdk)    | TypeScript | SDK for building guarded agentic apps | [**Read the docs**](./packages/sdk/README.md)        |
+| [veto](./packages/sdk-python) | Python     | SDK for building guarded agentic apps | [**Read the docs**](./packages/sdk-python/README.md) |
+| [veto-cli](./packages/cli)    | TypeScript | CLI for AI coding assistants          | [**Read the docs**](./packages/cli/README.md)        |
 
 ## Install
 
@@ -19,7 +19,7 @@ Veto gives you control over what AI agents can and cannot do. Whether you're bui
 npm install veto-sdk
 
 # Python SDK
-pip install veto-sdk
+pip install veto
 
 # CLI for AI coding assistants
 npm install -g veto-cli

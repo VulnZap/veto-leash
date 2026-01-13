@@ -60,5 +60,5 @@ pnpm changeset        # Add a changeset for releases
 - **Repo**: https://github.com/VulnZap/veto
 - **npm SDK**: https://npmjs.com/package/veto-sdk
 - **npm CLI**: https://npmjs.com/package/veto-cli
-- **PyPI SDK**: https://pypi.org/project/veto-sdk
+- **PyPI SDK**: https://pypi.org/project/veto
 - **Landing**: https://veto.run

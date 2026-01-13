@@ -1,14 +1,15 @@
 ---
 name: Feature Request
 about: Suggest an idea
-title: '[FEAT] '
+title: "[FEAT] "
 labels: enhancement
-assignees: ''
+assignees: ""
 ---
 
 ## Package
 
-- [ ] `veto-sdk`
+- [ ] `veto-sdk` (TypeScript)
+- [ ] `veto` (Python)
 - [ ] `veto-cli`
 - [ ] `veto.run` (web)
 - [ ] New package

@@ -14,7 +14,7 @@ body:
       description: Which package should this feature be in?
       options:
         - veto-sdk (TypeScript)
-        - veto-sdk (Python)
+        - veto (Python)
         - veto-cli
         - All packages
         - New package

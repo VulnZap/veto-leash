@@ -1,14 +1,15 @@
 ---
 name: Bug Report
 about: Report something broken
-title: '[BUG] '
+title: "[BUG] "
 labels: bug
-assignees: ''
+assignees: ""
 ---
 
 ## Package
 
-- [ ] `veto-sdk`
+- [ ] `veto-sdk` (TypeScript)
+- [ ] `veto` (Python)
 - [ ] `veto-cli`
 - [ ] `veto.run` (web)
 
@@ -18,9 +19,9 @@ assignees: ''
 
 ## To reproduce
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## Expected behavior
 
@@ -28,9 +29,9 @@ assignees: ''
 
 ## Environment
 
-- OS: 
-- Node: 
-- Package version: 
+- OS:
+- Node:
+- Package version:
 
 ## Logs
 

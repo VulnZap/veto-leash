@@ -18,7 +18,7 @@ pnpm test
 veto/
 ├── packages/
 │   ├── sdk/           # TypeScript SDK (npm: veto-sdk)
-│   ├── sdk-python/    # Python SDK (pip: veto-sdk)
+│   ├── sdk-python/    # Python SDK (pip: veto)
 │   └── cli/           # CLI + TUI (npm: veto-cli)
 ├── apps/
 │   └── web/           # Landing page (veto.run)
