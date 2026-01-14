@@ -13,7 +13,7 @@ export function Integrations() {
     { icon: OpenAI },
     { icon: Groq },
     { icon: HuggingFace },
-    { icon: IconBrandChrome }, // browser-use
+    { icon: IconBrandChrome },
   ]
 
   return (
@@ -25,21 +25,17 @@ export function Integrations() {
         </h2>
 
         {/* Marquee */}
-        <div className="relative overflow-hidden">
-          <Marquee pauseOnHover className="py-2">
+        <div className="relative overflow-hidden mask-gradient">
+          <Marquee pauseOnHover className="gap-6">
             {logos.map((logo, index) => (
               <div
                 key={index}
-                className="flex items-center justify-center w-20 h-12 rounded border border-border bg-surface hover:border-border-subtle transition-colors"
+                className="flex items-center justify-center w-14 h-14 rounded-lg bg-surface"
               >
-                <logo.icon size={24} className="text-muted-foreground" />
+                <logo.icon size={28} className="text-muted-foreground" />
               </div>
             ))}
           </Marquee>
-
-          {/* Edge Fades */}
-          <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-background to-transparent pointer-events-none z-10" />
-          <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-background to-transparent pointer-events-none z-10" />
         </div>
 
         {/* SDK Callout */}

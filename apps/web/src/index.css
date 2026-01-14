@@ -112,11 +112,16 @@ h1, h2, h3 {
 }
 
 .animate-marquee {
-  animation: marquee var(--duration, 30s) linear infinite;
+  animation: marquee var(--duration, 40s) linear infinite;
 }
 
 .animate-marquee-reverse {
-  animation: marquee-reverse var(--duration, 30s) linear infinite;
+  animation: marquee-reverse var(--duration, 40s) linear infinite;
+}
+
+.mask-gradient {
+  mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
 }
 
 .animate-in {
