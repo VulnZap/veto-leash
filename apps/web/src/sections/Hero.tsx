@@ -6,20 +6,30 @@ export function Hero() {
       <div className="max-w-5xl mx-auto">
         {/* Text Content */}
         <div className="max-w-3xl mx-auto text-center">
+          {/* Badge */}
+          <div className="animate-in delay-1 flex justify-center mb-8">
+            <div className="inline-flex items-center px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-medium tracking-wide uppercase">
+              Open Source Authorization Kernel
+            </div>
+          </div>
+
           {/* Logo */}
-          <div className="animate-in delay-1 flex justify-center">
-            <img src="/veto-darkmode.png" alt="veto" className="h-16 sm:h-20 md:h-24 w-auto" />
+          <div className="animate-in delay-2 flex justify-center">
+            <img src="/veto-darkmode.png" alt="veto" className="h-12 sm:h-16 md:h-20 w-auto opacity-90" />
           </div>
 
           {/* Tagline */}
-          <div className="mt-8 animate-in delay-2">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-medium tracking-tight text-foreground">
+          <div className="mt-8 animate-in delay-3">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight text-foreground">
               Agent proposes. Veto decides.
             </h1>
+            <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+              Deterministic control for non-deterministic software. Prevent side effects, enforce budget limits, and audit every tool call.
+            </p>
           </div>
 
           {/* Install Command */}
-          <div className="mt-10 animate-in delay-3">
+          <div className="mt-10 animate-in delay-4">
             <button
               onClick={() => {
                 navigator.clipboard.writeText('pip install veto')

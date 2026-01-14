@@ -14,7 +14,7 @@ export function Waitlist() {
 
   return (
     <section id="waitlist" className="py-24 px-6 border-t border-border">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
           <h2 className="text-2xl sm:text-3xl font-medium tracking-tight text-foreground mb-2">
@@ -29,7 +29,7 @@ export function Waitlist() {
         </p>
 
         {/* Email Form */}
-        <div className="max-w-md mx-auto mb-20">
+        <div className="max-w-md mx-auto mb-16">
           {!submitted ? (
             <form onSubmit={handleSubmit} className="flex gap-2">
               <input
@@ -55,19 +55,19 @@ export function Waitlist() {
           )}
         </div>
 
-        {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Pricing Cards - 2x2 Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* FREE */}
-          <div className="p-4 border border-border rounded-lg bg-surface flex flex-col">
-            <h3 className="text-base font-medium text-foreground mb-1">Free</h3>
+          <div className="p-5 border border-border rounded-lg bg-surface flex flex-col hover:border-border-subtle transition-colors">
+            <h3 className="text-sm font-medium text-foreground mb-1">Free</h3>
             <div className="mb-3">
               <span className="text-2xl font-medium text-foreground">$0</span>
               <span className="text-xs text-muted-foreground ml-1">/mo</span>
             </div>
-            <p className="text-[11px] text-muted-foreground mb-5 h-8 leading-tight">
+            <p className="text-[11px] text-muted-foreground mb-4 h-8 leading-tight">
               For developers learning & building.
             </p>
-            <ul className="space-y-2.5 text-xs text-muted-foreground flex-1">
+            <ul className="space-y-2 text-xs text-muted-foreground flex-1">
               <li className="flex items-start gap-2">
                 <IconCheck className="w-3.5 h-3.5 text-primary mt-0.5 flex-shrink-0" />
                 <span>10k decisions/mo</span>
@@ -88,19 +88,19 @@ export function Waitlist() {
           </div>
 
           {/* TEAM */}
-          <div className="p-4 border-2 border-primary rounded-lg bg-primary/5 relative flex flex-col">
-            <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-primary text-white text-[10px] font-medium rounded-full">
+          <div className="p-5 border-2 border-primary rounded-lg bg-primary/5 relative flex flex-col">
+            <div className="absolute -top-2.5 right-4 px-2 py-0.5 bg-primary text-white text-[10px] font-medium rounded-full">
               Production
             </div>
-            <h3 className="text-base font-medium text-foreground mb-1">Team</h3>
+            <h3 className="text-sm font-medium text-foreground mb-1">Team</h3>
             <div className="mb-3">
               <span className="text-2xl font-medium text-foreground">$99</span>
               <span className="text-xs text-muted-foreground ml-1">/mo</span>
             </div>
-            <p className="text-[11px] text-muted-foreground mb-5 h-8 leading-tight">
+            <p className="text-[11px] text-muted-foreground mb-4 h-8 leading-tight">
               For startups deploying to production.
             </p>
-            <ul className="space-y-2.5 text-xs text-muted-foreground flex-1">
+            <ul className="space-y-2 text-xs text-muted-foreground flex-1">
               <li className="flex items-start gap-2">
                 <IconCheck className="w-3.5 h-3.5 text-primary mt-0.5 flex-shrink-0" />
                 <span>100k decisions/mo</span>
@@ -121,16 +121,16 @@ export function Waitlist() {
           </div>
 
           {/* BUSINESS */}
-          <div className="p-4 border border-border rounded-lg bg-surface flex flex-col">
-            <h3 className="text-base font-medium text-foreground mb-1">Business</h3>
+          <div className="p-5 border border-border rounded-lg bg-surface flex flex-col hover:border-border-subtle transition-colors">
+            <h3 className="text-sm font-medium text-foreground mb-1">Business</h3>
             <div className="mb-3">
               <span className="text-2xl font-medium text-foreground">$499</span>
               <span className="text-xs text-muted-foreground ml-1">/mo</span>
             </div>
-            <p className="text-[11px] text-muted-foreground mb-5 h-8 leading-tight">
+            <p className="text-[11px] text-muted-foreground mb-4 h-8 leading-tight">
               For scaling companies & compliance.
             </p>
-            <ul className="space-y-2.5 text-xs text-muted-foreground flex-1">
+            <ul className="space-y-2 text-xs text-muted-foreground flex-1">
               <li className="flex items-start gap-2">
                 <IconCheck className="w-3.5 h-3.5 text-primary mt-0.5 flex-shrink-0" />
                 <span>1M decisions/mo</span>
@@ -151,15 +151,15 @@ export function Waitlist() {
           </div>
 
           {/* ENTERPRISE */}
-          <div className="p-4 border border-border rounded-lg bg-surface flex flex-col">
-            <h3 className="text-base font-medium text-foreground mb-1">Enterprise</h3>
+          <div className="p-5 border border-border rounded-lg bg-surface flex flex-col hover:border-border-subtle transition-colors">
+            <h3 className="text-sm font-medium text-foreground mb-1">Enterprise</h3>
             <div className="mb-3">
               <span className="text-2xl font-medium text-foreground">Custom</span>
             </div>
-            <p className="text-[11px] text-muted-foreground mb-5 h-8 leading-tight">
+            <p className="text-[11px] text-muted-foreground mb-4 h-8 leading-tight">
               For regulated industries.
             </p>
-            <ul className="space-y-2.5 text-xs text-muted-foreground flex-1">
+            <ul className="space-y-2 text-xs text-muted-foreground flex-1">
               <li className="flex items-start gap-2">
                 <IconCheck className="w-3.5 h-3.5 text-primary mt-0.5 flex-shrink-0" />
                 <span>Unlimited decisions</span>
