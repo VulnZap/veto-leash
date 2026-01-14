@@ -152,7 +152,7 @@ export function Waitlist() {
                 className={`w-full h-9 text-xs font-medium rounded-sm transition-colors ${
                   plan.highlight
                     ? 'bg-primary text-white hover:bg-primary/90'
-                    : 'bg-surface border border-border hover:bg-surface-elevated'
+                    : 'bg-surface border border-border text-foreground hover:bg-surface-elevated'
                 }`}
               >
                 {plan.cta}
