@@ -4,9 +4,13 @@ import { Marquee } from '@/components/ui/marquee'
 
 export function Integrations() {
   const items = [
+    // Security Icons
     { icon: IconShieldCheck, isSecurity: true },
     { icon: IconLock, isSecurity: true },
     { icon: IconKey, isSecurity: true },
+    // Separator
+    { icon: null, isSeparator: true },
+    // Agent Icons
     { icon: Claude, isSecurity: false },
     { icon: Cursor, isSecurity: false },
     { icon: OpenAI, isSecurity: false },
@@ -33,15 +37,17 @@ export function Integrations() {
           <Marquee className="gap-0" pauseOnHover>
             {[...items, ...items, ...items].map((item, index) => (
               <div key={index} className="flex items-center">
-                <div className="flex items-center justify-center w-[3.5rem] h-[3.5rem]">
-                  <item.icon
-                    size={32}
-                    className={item.isSecurity ? 'text-primary/80' : 'text-muted-foreground/80'}
-                  />
-                </div>
-                {/* Minimal separator line between security and agents */}
-                {item.isSecurity && (
-                  <div className="w-[1px] h-8 bg-border/50" />
+                {item.isSeparator ? (
+                  <div className="w-[1px] h-8 bg-border/50 mx-4" />
+                ) : (
+                  <div className="flex items-center justify-center w-[3.5rem] h-[3.5rem]">
+                    {item.icon && (
+                      <item.icon
+                        size={32}
+                        className={item.isSecurity ? 'text-primary/80' : 'text-muted-foreground/80'}
+                      />
+                    )}
+                  </div>
                 )}
               </div>
             ))}
