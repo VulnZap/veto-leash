@@ -37,7 +37,7 @@ export function Hero() {
             <Announcement themed className="bg-surface/60 border-border/60 shadow-none">
               <AnnouncementTag className="bg-primary/10 text-primary">Open source</AnnouncementTag>
               <AnnouncementTitle className="text-sm text-muted-foreground">
-                Authorization kernel
+                Self-hosted by default
               </AnnouncementTitle>
             </Announcement>
           </div>
@@ -50,10 +50,10 @@ export function Hero() {
           {/* Tagline */}
           <div className="mt-[34px] animate-in delay-3">
             <h1 className="text-hero font-medium tracking-tight text-foreground">
-              Agent proposes. Veto decides.
+              Authorization layer for AI agents.
             </h1>
             <p className="mt-[21px] text-lead text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Deterministic control for non-deterministic software. Prevent side effects, enforce budget limits, and audit every tool call.
+              Built for browser and coding agents today. Enforce policies, approvals, and audit every tool call.
             </p>
           </div>
 
