@@ -53,7 +53,7 @@ export function Hero() {
               Authorization layer for AI agents.
             </h1>
             <p className="mt-[21px] text-lead text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Built for browser and coding agents today. Enforce policies, approvals, and audit every tool call.
+              Secure browser and coding agents before they ship. Enforce approvals and audit every tool call.
             </p>
           </div>
 
